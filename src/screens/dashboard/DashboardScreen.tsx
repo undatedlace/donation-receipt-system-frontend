@@ -61,7 +61,7 @@ export default function DashboardScreen({ navigation }: any) {
           <Text style={styles.cardNum}>{stats?.monthlyDonations || 0}</Text>
           <Text style={styles.cardLabel}>This Month</Text>
         </View>
-        <TouchableOpacity style={[styles.card, { backgroundColor: '#4CAF50' }]} onPress={() => navigation.navigate('New Donation')}>
+        <TouchableOpacity style={[styles.card, { backgroundColor: '#4CAF50' }]} onPress={() => navigation.navigate('Donate')}>
           <Text style={styles.cardNum}>+</Text>
           <Text style={styles.cardLabel}>New Donation</Text>
         </TouchableOpacity>

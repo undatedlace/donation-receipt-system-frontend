@@ -17,7 +17,9 @@ export default function LoginScreen({ navigation }: any) {
     try {
       await login(email.trim(), password);
     } catch (e: any) {
-      Alert.alert('Login Failed', e?.response?.data?.message || 'Invalid credentials');
+      const message = e?.response?.data?.message
+        ?? (e?.message ? `Network error: ${e.message}` : 'Invalid credentials');
+      Alert.alert('Login Failed', message);
     } finally {
       setLoading(false);
     }

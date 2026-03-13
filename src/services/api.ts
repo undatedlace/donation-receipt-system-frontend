@@ -2,9 +2,9 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ✅ Replace with your Railway URL after deployment
-export const BASE_URL = 'http://localhost:3001/api';
-// For local dev: export const BASE_URL = 'http://10.0.2.2:3000/api'; // Android emulator
-// For local dev: export const BASE_URL = 'http://localhost:3000/api'; // iOS simulator
+// export const BASE_URL = 'http://localhost:3001/api'; // iOS simulator
+export const BASE_URL = 'http://10.0.2.2:3001/api'; // Android emulator
+// For physical device: export const BASE_URL = 'http://YOUR_PC_LOCAL_IP:3001/api';
 
 const api = axios.create({ baseURL: BASE_URL });
 
@@ -45,5 +45,11 @@ export const sendWhatsApp = (donationId: string) =>
 
 // ─── Stats ─────────────────────────────────────────────────────────────
 export const getDashboardStats = () => api.get('/stats/dashboard');
+
+// ─── Users (Admin only) ────────────────────────────────────────────────
+export const getUsers = () => api.get('/users');
+export const createUser = (data: any) => api.post('/users', data);
+export const updateUser = (id: string, data: any) => api.patch(`/users/${id}`, data);
+export const deleteUser = (id: string) => api.delete(`/users/${id}`);
 
 export default api;

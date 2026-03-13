@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
 
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -12,38 +12,108 @@ import DonationFormScreen from '../screens/donations/DonationFormScreen';
 import ReceiptPreviewScreen from '../screens/donations/ReceiptPreviewScreen';
 import HistoryScreen from '../screens/history/HistoryScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
+import UsersScreen from '../screens/users/UsersScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const COLORS = { green: '#1B6B3A', gold: '#C8963E', grey: '#9E9E9E' };
+const G = '#1B6B3A';
+const GOLD = '#C8963E';
+const GREY = '#9E9E9E';
 
-const TabIcon = ({ name, color }: { name: string; color: string }) => {
-  const icons: Record<string, string> = {
-    Dashboard: '📊', 'New Donation': '💚', History: '📋', Settings: '⚙️',
-  };
-  return (
-    <View>
-      {/* Replace with react-native-vector-icons in production */}
-    </View>
-  );
+const TAB_ICONS: Record<string, string> = {
+  Dashboard: '📊',
+  Donate: '💚',
+  History: '📋',
+  Users: '👥',
+  Settings: '⚙️',
 };
 
+function TabIcon({ name, color }: { name: string; color: string }) {
+  return (
+    <Text style={{ fontSize: 22, color, includeFontPadding: false }}>{TAB_ICONS[name] ?? '●'}</Text>
+  );
+}
+
 function MainTabs() {
+  const { user } = useAuth();
+  const isAdmin = Array.isArray(user?.roles)
+    ? user.roles.includes('admin')
+    : user?.role === 'admin';
+
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarActiveTintColor: COLORS.green,
-        tabBarInactiveTintColor: COLORS.grey,
-        tabBarStyle: { backgroundColor: '#fff', borderTopColor: '#E0E0E0', paddingBottom: 6, height: 60 },
-        headerStyle: { backgroundColor: COLORS.green },
+      screenOptions={{
+        tabBarActiveTintColor: G,
+        tabBarInactiveTintColor: GREY,
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopWidth: 0,
+          elevation: 12,
+          shadowColor: '#000',
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: -3 },
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 6,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+        headerStyle: { backgroundColor: G, elevation: 0, shadowOpacity: 0 },
         headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: 'bold' },
-      })}>
-      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ tabBarLabel: 'Dashboard' }} />
-      <Tab.Screen name="New Donation" component={DonationFormScreen} options={{ tabBarLabel: 'Donate' }} />
-      <Tab.Screen name="History" component={HistoryScreen} options={{ tabBarLabel: 'History' }} />
-      <Tab.Screen name="Settings" component={SettingsScreen} options={{ tabBarLabel: 'Settings' }} />
+        headerTitleStyle: { fontWeight: '700', fontSize: 17 },
+        headerTitleAlign: 'center',
+        headerRight: () => (
+          <Text style={{ color: GOLD, fontSize: 17, marginRight: 14 }}>☪</Text>
+        ),
+      }}>
+      <Tab.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{
+          tabBarLabel: 'Dashboard',
+          tabBarIcon: ({ color }) => <TabIcon name="Dashboard" color={color} />,
+          headerTitle: 'Noori Donation',
+        }}
+      />
+      <Tab.Screen
+        name="Donate"
+        component={DonationFormScreen}
+        options={{
+          tabBarLabel: 'Donate',
+          tabBarIcon: ({ color }) => <TabIcon name="Donate" color={color} />,
+          headerTitle: 'New Donation',
+        }}
+      />
+      <Tab.Screen
+        name="History"
+        component={HistoryScreen}
+        options={{
+          tabBarLabel: 'History',
+          tabBarIcon: ({ color }) => <TabIcon name="History" color={color} />,
+          headerTitle: 'Donation History',
+        }}
+      />
+      {isAdmin && (
+        <Tab.Screen
+          name="Users"
+          component={UsersScreen}
+          options={{
+            tabBarLabel: 'Users',
+            tabBarIcon: ({ color }) => <TabIcon name="Users" color={color} />,
+            headerTitle: 'User Management',
+          }}
+        />
+      )}
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          tabBarLabel: 'Settings',
+          tabBarIcon: ({ color }) => <TabIcon name="Settings" color={color} />,
+          headerTitle: 'Settings',
+        }}
+      />
     </Tab.Navigator>
   );
 }

@@ -28,9 +28,11 @@ export default function SettingsScreen() {
       {/* Profile Card */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>👤 Profile</Text>
-        <Text style={styles.profileName}>{user?.name}</Text>
+        <Text style={styles.profileName}>{user?.name ?? `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()}</Text>
         <Text style={styles.profileEmail}>{user?.email}</Text>
-        <Text style={styles.profileRole}>Role: {user?.role}</Text>
+        <Text style={styles.profileRole}>
+          {Array.isArray(user?.roles) ? user.roles.join(', ') : user?.role ?? 'user'}
+        </Text>
       </View>
 
       {/* WhatsApp Info */}
