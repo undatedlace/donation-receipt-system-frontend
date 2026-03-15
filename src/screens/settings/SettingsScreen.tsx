@@ -1,12 +1,15 @@
 import React from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  Alert, ScrollView,
-} from 'react-native';
+  Badge,
+  Button,
+  PageHeader,
+  PageScroll,
+  SectionHeading,
+  SurfaceCard,
+} from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
-
-const G = '#1B6B3A';
-const GOLD = '#C8963E';
+import { palette, spacing } from '../../theme/theme';
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth();
@@ -18,71 +21,96 @@ export default function SettingsScreen() {
     ]);
   };
 
+  const fallbackName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
+  const fullName = user?.name ?? (fallbackName || 'User account');
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerArabic}>بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</Text>
-        <Text style={styles.headerTitle}>Settings</Text>
-      </View>
+    <PageScroll>
+      <PageHeader
+        eyebrow="Settings"
+        title="Manage profile details, delivery status, and export access."
+        subtitle="This screen keeps operational info close without pulling you out of the app flow."
+        trailing={<Badge label="Workspace" tone="primary" />}
+      />
 
-      {/* Profile Card */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>👤 Profile</Text>
-        <Text style={styles.profileName}>{user?.name ?? `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()}</Text>
+      <SurfaceCard style={styles.card}>
+        <SectionHeading title="Profile" caption="Current signed-in account" />
+        <Text style={styles.profileName}>{fullName}</Text>
         <Text style={styles.profileEmail}>{user?.email}</Text>
-        <Text style={styles.profileRole}>
-          {Array.isArray(user?.roles) ? user.roles.join(', ') : user?.role ?? 'user'}
-        </Text>
-      </View>
-
-      {/* WhatsApp Info */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>📲 WhatsApp</Text>
-        <View style={styles.statusRow}>
-          <View style={[styles.statusDot, { backgroundColor: '#4CAF50' }]} />
-          <Text style={styles.statusText}>Meta Cloud API — Always Ready</Text>
+        <View style={styles.roleRow}>
+          {(Array.isArray(user?.roles) ? user.roles : [user?.role ?? 'user']).map((role: string) => (
+            <Badge key={role} label={role} tone="success" style={styles.roleBadge} />
+          ))}
         </View>
-        <Text style={styles.note}>
-          WhatsApp receipts are sent automatically via the Meta Cloud API when you submit a donation.
-          No setup needed — just ensure your server has valid{' '}
-          <Text style={{ fontWeight: 'bold' }}>WHATSAPP_ACCESS_TOKEN</Text> and{' '}
-          <Text style={{ fontWeight: 'bold' }}>WHATSAPP_PHONE_NUMBER_ID</Text> in your .env file.
+      </SurfaceCard>
+
+      <SurfaceCard style={styles.card}>
+        <SectionHeading
+          title="WhatsApp delivery"
+          caption="Receipt delivery channel used after donation creation"
+          action={<Badge label="Connected" tone="success" />}
+        />
+        <Text style={styles.copy}>
+          Receipts are sent through the Meta Cloud API after submission. Make sure your backend has
+          valid `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID` values in its environment.
         </Text>
-      </View>
+      </SurfaceCard>
 
-      {/* Export */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>📊 Export Data</Text>
-        <Text style={styles.note}>Download all donation records as CSV from your backend:</Text>
-        <Text style={styles.code}>GET /api/donations/export/csv{'\n'}(Authorization: Bearer TOKEN)</Text>
-      </View>
+      <SurfaceCard style={styles.card}>
+        <SectionHeading title="Export endpoint" caption="Backend route for CSV exports" />
+        <View style={styles.codeBlock}>
+          <Text style={styles.codeText}>GET /api/donations/export/csv</Text>
+          <Text style={styles.codeText}>Authorization: Bearer TOKEN</Text>
+        </View>
+      </SurfaceCard>
 
-      {/* Logout */}
-      <TouchableOpacity style={[styles.btn, styles.logoutBtn, { margin: 16 }]} onPress={handleLogout}>
-        <Text style={styles.btnText}>Logout</Text>
-      </TouchableOpacity>
-
-      <View style={{ height: 40 }} />
-    </ScrollView>
+      <Button label="Logout" variant="danger" onPress={handleLogout} style={styles.logoutButton} />
+    </PageScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F9F5' },
-  header: { backgroundColor: G, padding: 20, alignItems: 'center' },
-  headerArabic: { color: GOLD, fontSize: 16, fontWeight: 'bold', marginBottom: 6 },
-  headerTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-  card: { margin: 16, marginBottom: 8, backgroundColor: '#fff', borderRadius: 14, padding: 16, elevation: 2 },
-  cardTitle: { fontSize: 15, fontWeight: 'bold', color: G, marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingBottom: 8 },
-  profileName: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  profileEmail: { fontSize: 14, color: '#666', marginTop: 4 },
-  profileRole: { fontSize: 13, color: GOLD, marginTop: 4, textTransform: 'capitalize' },
-  statusRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  statusDot: { width: 12, height: 12, borderRadius: 6, marginRight: 8 },
-  statusText: { fontSize: 14, fontWeight: '600', color: '#333' },
-  note: { fontSize: 13, color: '#666', lineHeight: 20 },
-  code: { fontSize: 12, color: '#333', backgroundColor: '#F5F5F5', padding: 10, borderRadius: 8, marginTop: 10, fontFamily: 'monospace' },
-  btn: { backgroundColor: G, borderRadius: 10, padding: 14, alignItems: 'center' },
-  btnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-  logoutBtn: { backgroundColor: '#FF5252' },
+  card: {
+    marginTop: spacing.lg,
+  },
+  profileName: {
+    color: palette.text,
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  profileEmail: {
+    color: palette.textMuted,
+    fontSize: 14,
+    marginTop: spacing.xs,
+  },
+  roleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  roleBadge: {
+    marginRight: 0,
+  },
+  copy: {
+    color: palette.textMuted,
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  codeBlock: {
+    backgroundColor: palette.surfaceMuted,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 16,
+    padding: spacing.lg,
+    gap: spacing.xs,
+  },
+  codeText: {
+    color: palette.text,
+    fontSize: 13,
+    fontFamily: 'monospace',
+  },
+  logoutButton: {
+    marginTop: spacing.lg,
+  },
 });

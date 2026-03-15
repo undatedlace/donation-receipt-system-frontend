@@ -1,19 +1,35 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Modal, TextInput, ActivityIndicator, Alert, ScrollView,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { getUsers, createUser, updateUser, deleteUser } from '../../services/api';
-
-const G = '#1B6B3A';
-const GOLD = '#C8963E';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  FieldGroup,
+  InputField,
+  Page,
+  PageHeader,
+  SectionHeading,
+  SurfaceCard,
+} from '../../components/ui/primitives';
+import { createUser, deleteUser, getUsers, updateUser } from '../../services/api';
+import { palette, radius, spacing } from '../../theme/theme';
 
 const ROLES = ['admin', 'user', 'internal-admin'];
-const ROLE_COLOR: Record<string, string> = {
-  admin: '#C62828',
-  user: '#1B6B3A',
-  'internal-admin': '#6A1B9A',
+const ROLE_TONES: Record<string, 'danger' | 'primary' | 'info'> = {
+  admin: 'danger',
+  user: 'primary',
+  'internal-admin': 'info',
 };
 
 interface UserItem {
@@ -33,19 +49,52 @@ function RoleSelector({
   selected: string[];
   onChange: (roles: string[]) => void;
 }) {
-  const toggle = (r: string) =>
-    onChange(selected.includes(r) ? selected.filter(x => x !== r) : [...selected, r]);
+  const toggle = (role: string) =>
+    onChange(selected.includes(role) ? selected.filter(value => value !== role) : [...selected, role]);
+
   return (
-    <View style={s.rolesRow}>
-      {ROLES.map(r => (
-        <TouchableOpacity
-          key={r}
-          style={[s.roleChip, selected.includes(r) && { backgroundColor: ROLE_COLOR[r] || G, borderColor: ROLE_COLOR[r] || G }]}
-          onPress={() => toggle(r)}>
-          <Text style={[s.roleChipText, selected.includes(r) && { color: '#fff' }]}>{r}</Text>
-        </TouchableOpacity>
-      ))}
+    <View style={styles.rolesRow}>
+      {ROLES.map(role => {
+        const active = selected.includes(role);
+        return (
+          <TouchableOpacity
+            key={role}
+            activeOpacity={0.88}
+            style={[styles.roleChip, active && styles.roleChipActive]}
+            onPress={() => toggle(role)}>
+            <Text style={[styles.roleChipText, active && styles.roleChipTextActive]}>{role}</Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
+  );
+}
+
+function UserSheet({
+  visible,
+  title,
+  children,
+  onClose,
+}: {
+  visible: boolean;
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
+        <View style={styles.sheet}>
+          <View style={styles.sheetHandle} />
+          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <Text style={styles.sheetTitle}>{title}</Text>
+            {children}
+            <View style={styles.sheetSpacer} />
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -54,12 +103,10 @@ export default function UsersScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // ── Add modal ────────────────────────────────
   const [addVisible, setAddVisible] = useState(false);
   const [addForm, setAddForm] = useState({ ...emptyAdd });
   const [addLoading, setAddLoading] = useState(false);
 
-  // ── Edit modal ───────────────────────────────
   const [editVisible, setEditVisible] = useState(false);
   const [editTarget, setEditTarget] = useState<UserItem | null>(null);
   const [editFirst, setEditFirst] = useState('');
@@ -70,52 +117,69 @@ export default function UsersScreen() {
   const fetchUsers = async () => {
     try {
       const { data } = await getUsers();
-      setUsers(Array.isArray(data) ? data : data.data ?? []);
-    } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message ?? (e?.message ? `Network: ${e.message}` : 'Failed to load users'));
+      setUsers(Array.isArray(data) ? data : data?.data ?? []);
+    } catch (error: any) {
+      Alert.alert(
+        'Error',
+        error?.response?.data?.message ??
+          (error?.message ? `Network error: ${error.message}` : 'Failed to load users'),
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useFocusEffect(useCallback(() => { fetchUsers(); }, []));
+  useFocusEffect(
+    useCallback(() => {
+      fetchUsers();
+    }, []),
+  );
 
-  // ── Add ────────────────────────────────────────
   const handleAdd = async () => {
     const { firstName, lastName, email, password, roles } = addForm;
+
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()) {
       return Alert.alert('Validation', 'All fields are required.');
     }
+
     if (roles.length === 0) {
       return Alert.alert('Validation', 'Select at least one role.');
     }
+
     setAddLoading(true);
+
     try {
       await createUser({ firstName, lastName, email, password, roles });
       setAddVisible(false);
       setAddForm({ ...emptyAdd });
       fetchUsers();
-    } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message ?? 'Failed to create user');
+    } catch (error: any) {
+      Alert.alert('Error', error?.response?.data?.message ?? 'Failed to create user');
     } finally {
       setAddLoading(false);
     }
   };
 
-  // ── Edit ───────────────────────────────────────
-  const openEdit = (u: UserItem) => {
-    setEditTarget(u);
-    setEditFirst(u.firstName);
-    setEditLast(u.lastName);
-    setEditRoles([...u.roles]);
+  const openEdit = (user: UserItem) => {
+    setEditTarget(user);
+    setEditFirst(user.firstName);
+    setEditLast(user.lastName);
+    setEditRoles([...(user.roles ?? [])]);
     setEditVisible(true);
   };
 
   const handleEdit = async () => {
-    if (!editTarget) return;
-    if (editRoles.length === 0) return Alert.alert('Validation', 'Select at least one role.');
+    if (!editTarget) {
+      return;
+    }
+
+    if (editRoles.length === 0) {
+      return Alert.alert('Validation', 'Select at least one role.');
+    }
+
     setEditLoading(true);
+
     try {
       await updateUser(editTarget._id, {
         firstName: editFirst.trim(),
@@ -124,18 +188,17 @@ export default function UsersScreen() {
       });
       setEditVisible(false);
       fetchUsers();
-    } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message ?? 'Failed to update user');
+    } catch (error: any) {
+      Alert.alert('Error', error?.response?.data?.message ?? 'Failed to update user');
     } finally {
       setEditLoading(false);
     }
   };
 
-  // ── Delete ─────────────────────────────────────
-  const handleDelete = (u: UserItem) => {
+  const handleDelete = (user: UserItem) => {
     Alert.alert(
       'Delete User',
-      `Delete ${u.firstName} ${u.lastName}? This cannot be undone.`,
+      `Delete ${user.firstName} ${user.lastName}? This cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -143,10 +206,10 @@ export default function UsersScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteUser(u._id);
-              setUsers(prev => prev.filter(x => x._id !== u._id));
-            } catch (e: any) {
-              Alert.alert('Error', e?.response?.data?.message ?? 'Failed to delete user');
+              await deleteUser(user._id);
+              setUsers(previous => previous.filter(item => item._id !== user._id));
+            } catch (error: any) {
+              Alert.alert('Error', error?.response?.data?.message ?? 'Failed to delete user');
             }
           },
         },
@@ -154,232 +217,294 @@ export default function UsersScreen() {
     );
   };
 
-  // ── Render user card ───────────────────────────
-  const renderUser = ({ item }: { item: UserItem }) => (
-    <View style={s.card}>
-      <View style={s.avatarWrap}>
-        <Text style={s.avatarText}>{(item.firstName?.[0] ?? '?').toUpperCase()}</Text>
-      </View>
-      <View style={s.cardBody}>
-        <Text style={s.cardName}>{item.firstName} {item.lastName}</Text>
-        <Text style={s.cardEmail}>{item.email}</Text>
-        <View style={s.badgesRow}>
-          {(item.roles ?? []).map(r => (
-            <View key={r} style={[s.badge, { backgroundColor: ROLE_COLOR[r] ?? '#888' }]}>
-              <Text style={s.badgeText}>{r}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-      <View style={s.cardActions}>
-        <TouchableOpacity style={s.iconBtn} onPress={() => openEdit(item)}>
-          <Text style={s.iconBtnText}>✏️</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[s.iconBtn, s.iconBtnRed]} onPress={() => handleDelete(item)}>
-          <Text style={s.iconBtnText}>🗑️</Text>
-        </TouchableOpacity>
-      </View>
+  const renderHeader = () => (
+    <View style={styles.headerWrap}>
+      <PageHeader
+        eyebrow="Users"
+        title="Manage staff access and role assignments."
+        subtitle="Add new accounts, update permissions, and keep the team roster clean from one admin view."
+        trailing={<Badge label={`${users.length} total`} tone="primary" />}
+      />
+
+      <SurfaceCard style={styles.toolbarCard}>
+        <SectionHeading title="Team members" caption="Role-based access control" />
+        <Button label="Add user" onPress={() => setAddVisible(true)} />
+      </SurfaceCard>
     </View>
   );
 
+  const renderUser = ({ item }: { item: UserItem }) => {
+    const initials = `${item.firstName?.[0] ?? ''}${item.lastName?.[0] ?? ''}`.toUpperCase() || '?';
+
+    return (
+      <SurfaceCard style={styles.userCard}>
+        <View style={styles.avatarWrap}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
+
+        <View style={styles.userBody}>
+          <Text style={styles.userName}>
+            {item.firstName} {item.lastName}
+          </Text>
+          <Text style={styles.userEmail}>{item.email}</Text>
+
+          <View style={styles.badgesRow}>
+            {(item.roles ?? []).map(role => (
+              <Badge key={role} label={role} tone={ROLE_TONES[role] || 'primary'} />
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.actionsColumn}>
+          <Button label="Edit" variant="secondary" onPress={() => openEdit(item)} style={styles.inlineButton} />
+          <Button label="Delete" variant="ghost" onPress={() => handleDelete(item)} style={styles.inlineButton} />
+        </View>
+      </SurfaceCard>
+    );
+  };
+
+  if (loading) {
+    return (
+      <Page>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={palette.primary} />
+        </View>
+      </Page>
+    );
+  }
+
   return (
-    <View style={s.container}>
-      {/* Page header */}
-      <View style={s.pageHeader}>
-        <Text style={s.pageHeaderArabic}>إِدَارَةُ الْمُسْتَخْدِمِينَ</Text>
-        <Text style={s.pageHeaderTitle}>User Management</Text>
-      </View>
+    <Page>
+      <FlatList
+        data={users}
+        keyExtractor={item => item._id}
+        renderItem={renderUser}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={
+          <EmptyState
+            title="No users found"
+            subtitle="Create the first account to start assigning access and responsibilities."
+          />
+        }
+        contentContainerStyle={styles.listContent}
+        onRefresh={() => {
+          setRefreshing(true);
+          fetchUsers();
+        }}
+        refreshing={refreshing}
+        showsVerticalScrollIndicator={false}
+      />
 
-      {/* Toolbar */}
-      <View style={s.toolbar}>
-        <Text style={s.toolbarCount}>{users.length} user{users.length !== 1 ? 's' : ''}</Text>
-        <TouchableOpacity style={s.addBtn} onPress={() => setAddVisible(true)}>
-          <Text style={s.addBtnText}>＋  Add User</Text>
-        </TouchableOpacity>
-      </View>
+      <UserSheet
+        visible={addVisible}
+        title="Add new user"
+        onClose={() => {
+          setAddVisible(false);
+          setAddForm({ ...emptyAdd });
+        }}>
+        <FieldGroup label="First Name">
+          <InputField
+            value={addForm.firstName}
+            onChangeText={value => setAddForm(form => ({ ...form, firstName: value }))}
+            placeholder="First name"
+          />
+        </FieldGroup>
 
-      {loading ? (
-        <View style={s.center}><ActivityIndicator size="large" color={G} /></View>
-      ) : (
-        <FlatList
-          data={users}
-          keyExtractor={u => u._id}
-          renderItem={renderUser}
-          contentContainerStyle={{ padding: 14 }}
-          ListEmptyComponent={<Text style={s.empty}>No users found</Text>}
-          refreshing={refreshing}
-          onRefresh={() => { setRefreshing(true); fetchUsers(); }}
+        <FieldGroup label="Last Name">
+          <InputField
+            value={addForm.lastName}
+            onChangeText={value => setAddForm(form => ({ ...form, lastName: value }))}
+            placeholder="Last name"
+          />
+        </FieldGroup>
+
+        <FieldGroup label="Email">
+          <InputField
+            value={addForm.email}
+            onChangeText={value => setAddForm(form => ({ ...form, email: value }))}
+            placeholder="user@example.com"
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+        </FieldGroup>
+
+        <FieldGroup label="Password">
+          <InputField
+            value={addForm.password}
+            onChangeText={value => setAddForm(form => ({ ...form, password: value }))}
+            placeholder="Password"
+            secureTextEntry
+          />
+        </FieldGroup>
+
+        <FieldGroup label="Roles">
+          <RoleSelector
+            selected={addForm.roles}
+            onChange={roles => setAddForm(form => ({ ...form, roles }))}
+          />
+        </FieldGroup>
+
+        <Button label="Create user" loading={addLoading} onPress={handleAdd} style={styles.sheetButton} />
+        <Button
+          label="Cancel"
+          variant="ghost"
+          onPress={() => {
+            setAddVisible(false);
+            setAddForm({ ...emptyAdd });
+          }}
+          style={styles.sheetSecondaryButton}
         />
-      )}
+      </UserSheet>
 
-      {/* ─── Add User Modal ─────────────────────── */}
-      <Modal visible={addVisible} transparent animationType="slide" onRequestClose={() => setAddVisible(false)}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setAddVisible(false)}>
-          <View style={s.sheet}>
-            <View style={s.sheetHandle} />
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <Text style={s.sheetTitle}>Add New User</Text>
+      <UserSheet visible={editVisible} title="Edit user" onClose={() => setEditVisible(false)}>
+        <FieldGroup label="First Name">
+          <InputField value={editFirst} onChangeText={setEditFirst} placeholder="First name" />
+        </FieldGroup>
 
-              <Text style={s.fieldLabel}>First Name *</Text>
-              <TextInput
-                style={s.fieldInput}
-                value={addForm.firstName}
-                onChangeText={v => setAddForm(f => ({ ...f, firstName: v }))}
-                placeholder="First name"
-                placeholderTextColor="#AAA"
-              />
+        <FieldGroup label="Last Name">
+          <InputField value={editLast} onChangeText={setEditLast} placeholder="Last name" />
+        </FieldGroup>
 
-              <Text style={s.fieldLabel}>Last Name *</Text>
-              <TextInput
-                style={s.fieldInput}
-                value={addForm.lastName}
-                onChangeText={v => setAddForm(f => ({ ...f, lastName: v }))}
-                placeholder="Last name"
-                placeholderTextColor="#AAA"
-              />
+        <FieldGroup label="Roles">
+          <RoleSelector selected={editRoles} onChange={setEditRoles} />
+        </FieldGroup>
 
-              <Text style={s.fieldLabel}>Email *</Text>
-              <TextInput
-                style={s.fieldInput}
-                value={addForm.email}
-                onChangeText={v => setAddForm(f => ({ ...f, email: v }))}
-                placeholder="user@example.com"
-                placeholderTextColor="#AAA"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-
-              <Text style={s.fieldLabel}>Password *</Text>
-              <TextInput
-                style={s.fieldInput}
-                value={addForm.password}
-                onChangeText={v => setAddForm(f => ({ ...f, password: v }))}
-                placeholder="Password"
-                placeholderTextColor="#AAA"
-                secureTextEntry
-              />
-
-              <Text style={s.fieldLabel}>Roles * (tap to select)</Text>
-              <RoleSelector
-                selected={addForm.roles}
-                onChange={roles => setAddForm(f => ({ ...f, roles }))}
-              />
-
-              <TouchableOpacity style={s.submitBtn} onPress={handleAdd} disabled={addLoading}>
-                {addLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Create User</Text>}
-              </TouchableOpacity>
-              <TouchableOpacity style={s.outlineBtn} onPress={() => { setAddVisible(false); setAddForm({ ...emptyAdd }); }}>
-                <Text style={s.outlineBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <View style={{ height: 48 }} />
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* ─── Edit User Modal ─────────────────────── */}
-      <Modal visible={editVisible} transparent animationType="slide" onRequestClose={() => setEditVisible(false)}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setEditVisible(false)}>
-          <View style={s.sheet}>
-            <View style={s.sheetHandle} />
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <Text style={s.sheetTitle}>Edit User</Text>
-
-              <Text style={s.fieldLabel}>First Name</Text>
-              <TextInput
-                style={s.fieldInput}
-                value={editFirst}
-                onChangeText={setEditFirst}
-                placeholder="First name"
-                placeholderTextColor="#AAA"
-              />
-
-              <Text style={s.fieldLabel}>Last Name</Text>
-              <TextInput
-                style={s.fieldInput}
-                value={editLast}
-                onChangeText={setEditLast}
-                placeholder="Last name"
-                placeholderTextColor="#AAA"
-              />
-
-              <Text style={s.fieldLabel}>Roles (tap to toggle)</Text>
-              <RoleSelector selected={editRoles} onChange={setEditRoles} />
-
-              <TouchableOpacity style={s.submitBtn} onPress={handleEdit} disabled={editLoading}>
-                {editLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Save Changes</Text>}
-              </TouchableOpacity>
-              <TouchableOpacity style={s.outlineBtn} onPress={() => setEditVisible(false)}>
-                <Text style={s.outlineBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <View style={{ height: 48 }} />
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    </View>
+        <Button label="Save changes" loading={editLoading} onPress={handleEdit} style={styles.sheetButton} />
+        <Button
+          label="Cancel"
+          variant="ghost"
+          onPress={() => setEditVisible(false)}
+          style={styles.sheetSecondaryButton}
+        />
+      </UserSheet>
+    </Page>
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F7F4' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-  pageHeader: { backgroundColor: G, paddingTop: 16, paddingBottom: 20, alignItems: 'center' },
-  pageHeaderArabic: { color: GOLD, fontSize: 14, fontWeight: 'bold', marginBottom: 4 },
-  pageHeaderTitle: { color: '#fff', fontSize: 20, fontWeight: '700', letterSpacing: 0.4 },
-
-  toolbar: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E4F0EA',
+const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  toolbarCount: { color: '#888', fontSize: 13 },
-  addBtn: { backgroundColor: G, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 9, flexDirection: 'row', alignItems: 'center' },
-  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-
-  card: {
-    backgroundColor: '#fff', borderRadius: 16, padding: 14,
-    marginBottom: 10, flexDirection: 'row', alignItems: 'center',
-    elevation: 2, shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+  listContent: {
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.lg,
+    paddingBottom: 126,
   },
-  avatarWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: G, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 20 },
-  cardBody: { flex: 1 },
-  cardName: { fontSize: 15, fontWeight: '700', color: '#1A1A2E' },
-  cardEmail: { fontSize: 12, color: '#888', marginTop: 2 },
-  badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 7 },
-  badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
-  cardActions: { gap: 8 },
-  iconBtn: { backgroundColor: '#EDF7EF', borderRadius: 9, padding: 8, alignItems: 'center', justifyContent: 'center' },
-  iconBtnRed: { backgroundColor: '#FEECEC' },
-  iconBtnText: { fontSize: 16 },
-  empty: { textAlign: 'center', color: '#AAA', fontSize: 16, marginTop: 60 },
-
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  headerWrap: {
+    marginBottom: spacing.lg,
+  },
+  toolbarCard: {
+    marginTop: spacing.lg,
+  },
+  userCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  avatarWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: palette.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: palette.surface,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  userBody: {
+    flex: 1,
+  },
+  userName: {
+    color: palette.text,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  userEmail: {
+    color: palette.textMuted,
+    fontSize: 13,
+    marginTop: spacing.xs,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  actionsColumn: {
+    gap: spacing.sm,
+    width: 92,
+  },
+  inlineButton: {
+    minHeight: 40,
+    borderRadius: radius.sm,
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: palette.overlay,
+  },
   sheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 26, borderTopRightRadius: 26,
-    maxHeight: '88%', paddingHorizontal: 20, paddingTop: 0,
+    maxHeight: '88%',
+    backgroundColor: palette.surface,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: spacing.screen,
   },
-  sheetHandle: { width: 40, height: 4, backgroundColor: '#DDD', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 20 },
-  sheetTitle: { fontSize: 18, fontWeight: '700', color: G, marginBottom: 8 },
-
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#444', marginTop: 14, marginBottom: 6 },
-  fieldInput: {
-    borderWidth: 1.5, borderColor: '#D0E8D8', borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: '#1A1A2E', backgroundColor: '#FAFFF8',
+  sheetHandle: {
+    width: 44,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: palette.borderStrong,
+    alignSelf: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
   },
-
-  rolesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
+  sheetTitle: {
+    color: palette.text,
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: spacing.lg,
+  },
+  sheetSpacer: {
+    height: spacing.xl,
+  },
+  rolesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
   roleChip: {
-    borderWidth: 1.5, borderColor: '#C8D8C8', borderRadius: 22,
-    paddingHorizontal: 18, paddingVertical: 9,
+    minHeight: 42,
+    paddingHorizontal: 16,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  roleChipText: { fontSize: 13, color: '#555', fontWeight: '600' },
-
-  submitBtn: { backgroundColor: G, borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 24 },
-  submitBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  outlineBtn: { borderRadius: 14, padding: 14, alignItems: 'center', marginTop: 10, borderWidth: 1.5, borderColor: '#C8E0CC' },
-  outlineBtnText: { color: G, fontWeight: '600', fontSize: 14 },
+  roleChipActive: {
+    backgroundColor: palette.primaryDark,
+    borderColor: palette.primaryDark,
+  },
+  roleChipText: {
+    color: palette.textMuted,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  roleChipTextActive: {
+    color: palette.surface,
+  },
+  sheetButton: {
+    marginTop: spacing.lg,
+  },
+  sheetSecondaryButton: {
+    marginTop: spacing.sm,
+  },
 });

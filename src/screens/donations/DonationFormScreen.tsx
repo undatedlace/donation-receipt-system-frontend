@@ -1,45 +1,90 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  ActivityIndicator, Alert, Modal, FlatList, Platform,
+  Alert,
+  FlatList,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { createDonation, generateReceipt } from '../../services/api';
+import {
+  Badge,
+  Button,
+  FieldGroup,
+  InputField,
+  PageHeader,
+  PageScroll,
+  SectionHeading,
+  SurfaceCard,
+} from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
-
-const G = '#1B6B3A';
-const GOLD = '#C8963E';
+import { createDonation, generateReceipt } from '../../services/api';
+import { palette, radius, spacing } from '../../theme/theme';
 
 const DONATION_TYPES = ['Zakat', 'Fitra', 'Atiyaat', 'Noori Box'];
 const PAYMENT_MODES = ['Cheque', 'Bank Transfer', 'QR', 'Cash'];
-const BOX_NUMBERS = Array.from({ length: 100 }, (_, i) => String(i + 1));
+const BOX_NUMBERS = Array.from({ length: 100 }, (_, index) => String(index + 1));
 
 interface SelectModalProps {
   visible: boolean;
   options: string[];
-  onSelect: (val: string) => void;
+  onSelect: (value: string) => void;
   onClose: () => void;
   title: string;
 }
 
 function SelectModal({ visible, options, onSelect, onClose, title }: SelectModalProps) {
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <TouchableOpacity style={styles.modalOverlay} onPress={onClose} activeOpacity={1}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
         <View style={styles.modalSheet}>
           <View style={styles.modalHandle} />
           <Text style={styles.modalTitle}>{title}</Text>
           <FlatList
             data={options}
-            keyExtractor={(item) => item}
+            keyExtractor={item => item}
             renderItem={({ item }) => (
-              <TouchableOpacity style={styles.modalItem} onPress={() => { onSelect(item); onClose(); }}>
+              <TouchableOpacity
+                activeOpacity={0.88}
+                style={styles.modalItem}
+                onPress={() => {
+                  onSelect(item);
+                  onClose();
+                }}>
                 <Text style={styles.modalItemText}>{item}</Text>
               </TouchableOpacity>
             )}
           />
         </View>
-      </TouchableOpacity>
+      </View>
     </Modal>
+  );
+}
+
+function PickerField({
+  label,
+  value,
+  placeholder,
+  onPress,
+  hint,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  onPress: () => void;
+  hint?: string;
+}) {
+  return (
+    <FieldGroup label={label} hint={hint}>
+      <TouchableOpacity activeOpacity={0.88} style={styles.pickerField} onPress={onPress}>
+        <Text style={[styles.pickerValue, !value && styles.pickerPlaceholder]}>
+          {value || placeholder}
+        </Text>
+        <Text style={styles.pickerArrow}>Open</Text>
+      </TouchableOpacity>
+    </FieldGroup>
   );
 }
 
@@ -61,25 +106,59 @@ export default function DonationFormScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
-  const set = (key: string, val: string) => setForm(prev => ({ ...prev, [key]: val }));
+  const setValue = (key: string, value: string) =>
+    setForm(previous => ({ ...previous, [key]: value }));
 
   const validate = () => {
-    if (!form.fills) return 'Fills field is required';
-    if (!form.date) return 'Date is required';
-    if (!form.donorName.trim()) return 'Donor name is required';
-    if (!form.mobileNumber.trim()) return 'Mobile number is required';
-    if (!form.address.trim()) return 'Address is required';
-    if (!form.donationType) return 'Please select donation type';
-    if (!form.mode) return 'Please select payment mode';
-    if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0) return 'Valid amount is required';
+    if (!form.fills) {
+      return 'Fills field is required';
+    }
+    if (!form.date) {
+      return 'Date is required';
+    }
+    if (!form.donorName.trim()) {
+      return 'Donor name is required';
+    }
+    if (!form.mobileNumber.trim()) {
+      return 'Mobile number is required';
+    }
+    if (!form.address.trim()) {
+      return 'Address is required';
+    }
+    if (!form.donationType) {
+      return 'Please select donation type';
+    }
+    if (!form.mode) {
+      return 'Please select payment mode';
+    }
+    if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0) {
+      return 'Valid amount is required';
+    }
     return null;
   };
 
+  const resetForm = () =>
+    setForm({
+      fills: user?.name || '',
+      date: today,
+      donorName: '',
+      mobileNumber: '',
+      address: '',
+      donationType: '',
+      mode: '',
+      boxNumber: '',
+      amount: '',
+    });
+
   const handleSubmit = async () => {
-    const error = validate();
-    if (error) return Alert.alert('Validation Error', error);
+    const validationMessage = validate();
+
+    if (validationMessage) {
+      return Alert.alert('Validation Error', validationMessage);
+    }
 
     setLoading(true);
+
     try {
       const payload: any = {
         ...form,
@@ -91,126 +170,240 @@ export default function DonationFormScreen({ navigation }: any) {
       const { data: receipt } = await generateReceipt(donation._id);
 
       Alert.alert(
-        '✅ Donation Recorded!',
-        `Receipt ${receipt.receiptNumber} generated successfully`,
+        'Donation recorded',
+        `Receipt ${receipt.receiptNumber} generated successfully.`,
         [
           {
-            text: 'View Receipt',
-            onPress: () => navigation.navigate('ReceiptPreview', {
-              donationId: donation._id,
-              receiptUrl: receipt.url,
-              receiptNumber: receipt.receiptNumber,
-              donorName: form.donorName,
-              mobileNumber: form.mobileNumber,
-            }),
+            text: 'View receipt',
+            onPress: () =>
+              navigation.navigate('ReceiptPreview', {
+                donationId: donation._id,
+                receiptUrl: receipt.url,
+                receiptNumber: receipt.receiptNumber,
+                donorName: form.donorName,
+                mobileNumber: form.mobileNumber,
+              }),
           },
           {
-            text: 'New Donation',
-            onPress: () => setForm({ fills: user?.name || '', date: today, donorName: '', mobileNumber: '', address: '', donationType: '', mode: '', boxNumber: '', amount: '' }),
+            text: 'New donation',
+            onPress: resetForm,
           },
         ],
       );
-    } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Failed to create donation');
+    } catch (error: any) {
+      Alert.alert('Error', error?.response?.data?.message || 'Failed to create donation');
     } finally {
       setLoading(false);
     }
   };
 
-  const Input = ({ label, field, ...props }: any) => (
-    <View style={styles.fieldWrap}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={styles.input}
-        value={form[field as keyof typeof form]}
-        onChangeText={(v) => set(field, v)}
-        placeholderTextColor="#AAA"
-        {...props}
+  return (
+    <PageScroll>
+      <PageHeader
+        eyebrow="New donation"
+        title="Capture donor details and generate the receipt instantly."
+        subtitle="The form is organized into clean sections so data entry feels fast, even during busy collection periods."
+        trailing={<Badge label={user?.name || 'Recorder'} tone="success" />}
       />
-    </View>
-  );
 
-  const Picker = ({ label, field, options, title }: any) => (
-    <View style={styles.fieldWrap}>
-      <Text style={styles.label}>{label}</Text>
-      <TouchableOpacity style={[styles.input, styles.picker]} onPress={() => setActiveModal(field)}>
-        <Text style={{ color: form[field as keyof typeof form] ? '#333' : '#AAA', fontSize: 15 }}>
-          {form[field as keyof typeof form] || `Select ${label}`}
+      <SurfaceCard style={styles.sectionCard}>
+        <SectionHeading
+          title="Donor details"
+          caption="Basic contact information used for the record and WhatsApp receipt delivery."
+        />
+
+        <FieldGroup label="Recorded By">
+          <InputField value={form.fills} onChangeText={value => setValue('fills', value)} placeholder="Your name" />
+        </FieldGroup>
+
+        <FieldGroup label="Date">
+          <InputField value={form.date} onChangeText={value => setValue('date', value)} placeholder="YYYY-MM-DD" />
+        </FieldGroup>
+
+        <FieldGroup label="Name of the Donor">
+          <InputField
+            value={form.donorName}
+            onChangeText={value => setValue('donorName', value)}
+            placeholder="Full name"
+          />
+        </FieldGroup>
+
+        <FieldGroup label="Mobile Number">
+          <InputField
+            value={form.mobileNumber}
+            onChangeText={value => setValue('mobileNumber', value)}
+            placeholder="+91 XXXXX XXXXX"
+            keyboardType="phone-pad"
+          />
+        </FieldGroup>
+
+        <FieldGroup label="Address">
+          <InputField
+            value={form.address}
+            onChangeText={value => setValue('address', value)}
+            placeholder="Full address"
+            multiline
+            numberOfLines={4}
+          />
+        </FieldGroup>
+      </SurfaceCard>
+
+      <SurfaceCard style={styles.sectionCard}>
+        <SectionHeading
+          title="Donation details"
+          caption="Select the collection type, payment mode, optional box number, and final amount."
+        />
+
+        <PickerField
+          label="Donation Type"
+          value={form.donationType}
+          placeholder="Select donation type"
+          onPress={() => setActiveModal('donationType')}
+        />
+
+        <PickerField
+          label="Payment Mode"
+          value={form.mode}
+          placeholder="Select payment mode"
+          onPress={() => setActiveModal('mode')}
+        />
+
+        <PickerField
+          label="Box Number"
+          hint="Optional"
+          value={form.boxNumber}
+          placeholder="Select box number"
+          onPress={() => setActiveModal('boxNumber')}
+        />
+
+        <FieldGroup label="Amount">
+          <InputField
+            value={form.amount}
+            onChangeText={value => setValue('amount', value)}
+            placeholder="0.00"
+            keyboardType="numeric"
+          />
+        </FieldGroup>
+      </SurfaceCard>
+
+      <SurfaceCard style={styles.submitCard}>
+        <Text style={styles.submitTitle}>Ready to generate the receipt?</Text>
+        <Text style={styles.submitText}>
+          Once saved, the receipt preview opens immediately and can be shared through WhatsApp.
         </Text>
-        <Text style={{ color: '#AAA' }}>▾</Text>
-      </TouchableOpacity>
+        <Button label="Save and generate receipt" loading={loading} onPress={handleSubmit} style={styles.submitButton} />
+      </SurfaceCard>
+
       <SelectModal
-        visible={activeModal === field}
-        options={options}
-        title={title}
-        onSelect={(val) => set(field, val)}
+        visible={activeModal === 'donationType'}
+        options={DONATION_TYPES}
+        title="Select donation type"
+        onSelect={value => setValue('donationType', value)}
         onClose={() => setActiveModal(null)}
       />
-    </View>
-  );
-
-  return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-      <View style={styles.header}>
-        <Text style={styles.headerArabic}>بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</Text>
-        <Text style={styles.headerTitle}>New Donation Entry</Text>
-      </View>
-
-      <View style={styles.form}>
-        <Input label="Fills (Recorded By)" field="fills" placeholder="Your name" />
-        <Input label="Date" field="date" placeholder="YYYY-MM-DD" />
-        <Input label="Name of the Donor" field="donorName" placeholder="Full name" />
-        <Input label="Mobile Number" field="mobileNumber" placeholder="+91 XXXXX XXXXX" keyboardType="phone-pad" />
-
-        <View style={styles.fieldWrap}>
-          <Text style={styles.label}>Address</Text>
-          <TextInput
-            style={[styles.input, { height: 90, textAlignVertical: 'top' }]}
-            value={form.address}
-            onChangeText={(v) => set('address', v)}
-            placeholder="Full address"
-            placeholderTextColor="#AAA"
-            multiline
-            numberOfLines={3}
-          />
-        </View>
-
-        <Picker label="Donation Type" field="donationType" options={DONATION_TYPES} title="Select Donation Type" />
-        <Picker label="Payment Mode" field="mode" options={PAYMENT_MODES} title="Select Payment Mode" />
-        <Picker label="Box Number (if applicable)" field="boxNumber" options={BOX_NUMBERS} title="Select Box Number" />
-
-        <Input label="Amount (₹)" field="amount" placeholder="0.00" keyboardType="numeric" />
-
-        <TouchableOpacity style={styles.btn} onPress={handleSubmit} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.btnText}>💚 Save & Generate Receipt</Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={{ height: 40 }} />
-      </View>
-    </ScrollView>
+      <SelectModal
+        visible={activeModal === 'mode'}
+        options={PAYMENT_MODES}
+        title="Select payment mode"
+        onSelect={value => setValue('mode', value)}
+        onClose={() => setActiveModal(null)}
+      />
+      <SelectModal
+        visible={activeModal === 'boxNumber'}
+        options={BOX_NUMBERS}
+        title="Select box number"
+        onSelect={value => setValue('boxNumber', value)}
+        onClose={() => setActiveModal(null)}
+      />
+    </PageScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F9F5' },
-  header: { backgroundColor: G, padding: 20, alignItems: 'center' },
-  headerArabic: { color: GOLD, fontSize: 16, fontWeight: 'bold', marginBottom: 6 },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  form: { padding: 16 },
-  fieldWrap: { marginBottom: 4 },
-  label: { color: G, fontWeight: '600', fontSize: 13, marginBottom: 5, marginTop: 12 },
-  input: { borderWidth: 1.5, borderColor: '#D0E8D8', borderRadius: 10, padding: 14, fontSize: 15, color: '#333', backgroundColor: '#fff' },
-  picker: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  btn: { backgroundColor: G, borderRadius: 12, padding: 18, alignItems: 'center', marginTop: 24 },
-  btnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%', paddingBottom: 30 },
-  modalHandle: { width: 40, height: 4, backgroundColor: '#DDD', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 },
-  modalTitle: { fontSize: 16, fontWeight: 'bold', color: G, padding: 16, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
-  modalItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
-  modalItemText: { fontSize: 15, color: '#333' },
+  sectionCard: {
+    marginTop: spacing.lg,
+  },
+  pickerField: {
+    minHeight: 54,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.surfaceMuted,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pickerValue: {
+    color: palette.text,
+    fontSize: 15,
+  },
+  pickerPlaceholder: {
+    color: palette.textSoft,
+  },
+  pickerArrow: {
+    color: palette.primary,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  submitCard: {
+    marginTop: spacing.lg,
+    backgroundColor: palette.primarySoft,
+    borderColor: '#CFE7D6',
+  },
+  submitTitle: {
+    color: palette.primaryDark,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  submitText: {
+    color: palette.textMuted,
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: spacing.sm,
+  },
+  submitButton: {
+    marginTop: spacing.lg,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: palette.overlay,
+  },
+  modalSheet: {
+    maxHeight: '72%',
+    backgroundColor: palette.surface,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingBottom: spacing.xl,
+  },
+  modalHandle: {
+    width: 44,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: palette.borderStrong,
+    alignSelf: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+  },
+  modalTitle: {
+    color: palette.text,
+    fontSize: 18,
+    fontWeight: '800',
+    paddingHorizontal: spacing.screen,
+    paddingBottom: spacing.md,
+  },
+  modalItem: {
+    paddingHorizontal: spacing.screen,
+    paddingVertical: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: palette.border,
+  },
+  modalItemText: {
+    color: palette.text,
+    fontSize: 15,
+    fontWeight: '600',
+  },
 });

@@ -1,9 +1,26 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import {
+  Badge,
+  Button,
+  FieldGroup,
+  InputField,
+  Page,
+  PageHeader,
+  SurfaceCard,
+} from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
+import { palette, spacing } from '../../theme/theme';
 
 export default function LoginScreen({ navigation }: any) {
   const { login } = useAuth();
@@ -12,13 +29,18 @@ export default function LoginScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) return Alert.alert('Error', 'Please fill all fields');
+    if (!email || !password) {
+      return Alert.alert('Error', 'Please fill all fields');
+    }
+
     setLoading(true);
+
     try {
       await login(email.trim(), password);
-    } catch (e: any) {
-      const message = e?.response?.data?.message
-        ?? (e?.message ? `Network error: ${e.message}` : 'Invalid credentials');
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ??
+        (error?.message ? `Network error: ${error.message}` : 'Invalid credentials');
       Alert.alert('Login Failed', message);
     } finally {
       setLoading(false);
@@ -26,68 +48,100 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.arabic}>بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</Text>
-          <Text style={styles.appName}>Noori Donation</Text>
-          <Text style={styles.subtitle}>Management System</Text>
-          <View style={styles.divider} />
-        </View>
-
-        {/* Form */}
-        <View style={styles.form}>
-          <Text style={styles.label}>Email Address</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="admin@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholderTextColor="#AAA"
+    <Page style={styles.page}>
+      <StatusBar barStyle="light-content" backgroundColor={palette.primaryDark} />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <PageHeader
+            eyebrow="Noori Donation"
+            title="Modern receipt workflow for your donation desk."
+            subtitle="Sign in to manage entries, generate receipts, and share them from one clean dashboard."
+            trailing={<Badge label="Secure sign in" tone="success" />}
           />
 
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-            secureTextEntry
-            placeholderTextColor="#AAA"
-          />
+          <SurfaceCard style={styles.formCard}>
+            <View style={styles.formHeader}>
+              <Text style={styles.formTitle}>Welcome back</Text>
+              <Text style={styles.formSubtitle}>Use your registered email address to continue.</Text>
+            </View>
 
-          <TouchableOpacity style={styles.btn} onPress={handleLogin} disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.btnText}>Login</Text>
-            )}
-          </TouchableOpacity>
+            <FieldGroup label="Email Address">
+              <InputField
+                value={email}
+                onChangeText={setEmail}
+                placeholder="admin@example.com"
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </FieldGroup>
 
-          <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.link}>
-            <Text style={styles.linkText}>Don't have an account? Register</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            <FieldGroup label="Password">
+              <InputField
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Enter your password"
+                secureTextEntry
+              />
+            </FieldGroup>
+
+            <Button label="Sign in" loading={loading} onPress={handleLogin} style={styles.primaryButton} />
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('Register')}
+              style={styles.linkButton}>
+              <Text style={styles.linkText}>Create a new account</Text>
+            </TouchableOpacity>
+          </SurfaceCard>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, backgroundColor: '#1B6B3A' },
-  header: { alignItems: 'center', paddingTop: 70, paddingBottom: 30, paddingHorizontal: 24 },
-  arabic: { color: '#C8963E', fontSize: 20, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
-  appName: { color: '#fff', fontSize: 32, fontWeight: 'bold', letterSpacing: 1 },
-  subtitle: { color: '#A8D5BC', fontSize: 14, marginTop: 4 },
-  divider: { width: 60, height: 3, backgroundColor: '#C8963E', borderRadius: 2, marginTop: 16 },
-  form: { flex: 1, backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, marginTop: 20 },
-  label: { color: '#1B6B3A', fontWeight: '600', fontSize: 13, marginBottom: 6, marginTop: 16 },
-  input: { borderWidth: 1.5, borderColor: '#D0E8D8', borderRadius: 10, padding: 14, fontSize: 15, color: '#333', backgroundColor: '#FAFFF8' },
-  btn: { backgroundColor: '#1B6B3A', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 28 },
-  btnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  link: { alignItems: 'center', marginTop: 18 },
-  linkText: { color: '#1B6B3A', fontSize: 14 },
+  page: {
+    backgroundColor: palette.background,
+  },
+  flex: {
+    flex: 1,
+  },
+  content: {
+    flexGrow: 1,
+    padding: spacing.screen,
+    justifyContent: 'center',
+    gap: spacing.lg,
+  },
+  formCard: {
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
+  },
+  formHeader: {
+    marginBottom: spacing.lg,
+  },
+  formTitle: {
+    color: palette.text,
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  formSubtitle: {
+    color: palette.textMuted,
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: spacing.xs,
+  },
+  primaryButton: {
+    marginTop: spacing.sm,
+  },
+  linkButton: {
+    alignItems: 'center',
+    marginTop: spacing.lg,
+  },
+  linkText: {
+    color: palette.primary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });

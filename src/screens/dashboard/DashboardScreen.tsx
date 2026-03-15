@@ -1,14 +1,51 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl,
+  ActivityIndicator,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { getDashboardStats } from '../../services/api';
+import {
+  Badge,
+  Button,
+  Page,
+  PageScroll,
+  PageHeader,
+  SectionHeading,
+  SurfaceCard,
+} from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
+import { getDashboardStats } from '../../services/api';
+import { palette, radius, shadows, spacing } from '../../theme/theme';
 
-const G = '#1B6B3A';
-const GOLD = '#C8963E';
+const formatCurrency = (value: number) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
+
+function MetricCard({
+  label,
+  value,
+  accent,
+  muted = false,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+  muted?: boolean;
+}) {
+  return (
+    <SurfaceCard
+      style={[
+        styles.metricCard,
+        accent && styles.metricCardAccent,
+        muted && styles.metricCardMuted,
+      ]}>
+      <Text style={[styles.metricValue, accent && styles.metricValueAccent]}>{value}</Text>
+      <Text style={[styles.metricLabel, accent && styles.metricLabelAccent]}>{label}</Text>
+    </SurfaceCard>
+  );
+}
 
 export default function DashboardScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -20,114 +57,250 @@ export default function DashboardScreen({ navigation }: any) {
     try {
       const { data } = await getDashboardStats();
       setStats(data);
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useFocusEffect(useCallback(() => { fetchStats(); }, []));
-
-  const onRefresh = () => { setRefreshing(true); fetchStats(); };
-
-  if (loading) return (
-    <View style={styles.center}><ActivityIndicator size="large" color={G} /></View>
+  useFocusEffect(
+    useCallback(() => {
+      fetchStats();
+    }, []),
   );
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchStats();
+  };
+
+  if (loading) {
+    return (
+      <Page>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={palette.primary} />
+        </View>
+      </Page>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[G]} />}>
-      {/* Welcome */}
-      <View style={styles.header}>
-        <Text style={styles.arabic}>بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</Text>
-        <Text style={styles.welcome}>Assalamu Alaikum, {user?.name} 🌙</Text>
+    <PageScroll
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.primary]} />
+      }>
+      <PageHeader
+        eyebrow="Dashboard"
+        title={`Assalamu Alaikum, ${user?.name ?? 'Team'}`}
+        subtitle="Track donations, review recent activity, and jump back into receipt generation."
+        trailing={<Badge label="Live data" tone="success" />}
+      />
+
+      <View style={styles.metricsGrid}>
+        <MetricCard label="Total raised" value={formatCurrency(stats?.totalAmount)} accent />
+        <MetricCard label="Donations" value={String(stats?.totalDonations || 0)} />
+        <MetricCard label="This month" value={String(stats?.monthlyDonations || 0)} />
+        <SurfaceCard style={styles.quickActionCard}>
+          <Text style={styles.quickActionTitle}>New donation</Text>
+          <Text style={styles.quickActionText}>Start a fresh receipt in one step.</Text>
+          <Button label="Create receipt" onPress={() => navigation.navigate('Donate')} style={styles.quickActionButton} />
+        </SurfaceCard>
       </View>
 
-      {/* Stat Cards */}
-      <View style={styles.cardRow}>
-        <View style={[styles.card, { backgroundColor: G }]}>
-          <Text style={styles.cardNum}>₹{Number(stats?.totalAmount || 0).toLocaleString('en-IN')}</Text>
-          <Text style={styles.cardLabel}>Total Raised</Text>
-        </View>
-        <View style={[styles.card, { backgroundColor: GOLD }]}>
-          <Text style={styles.cardNum}>{stats?.totalDonations || 0}</Text>
-          <Text style={styles.cardLabel}>Donations</Text>
-        </View>
-      </View>
-
-      <View style={styles.cardRow}>
-        <View style={[styles.card, { backgroundColor: '#2196F3' }]}>
-          <Text style={styles.cardNum}>{stats?.monthlyDonations || 0}</Text>
-          <Text style={styles.cardLabel}>This Month</Text>
-        </View>
-        <TouchableOpacity style={[styles.card, { backgroundColor: '#4CAF50' }]} onPress={() => navigation.navigate('Donate')}>
-          <Text style={styles.cardNum}>+</Text>
-          <Text style={styles.cardLabel}>New Donation</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* By Donation Type */}
-      {stats?.byType?.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>By Donation Type</Text>
-          {stats.byType.map((item: any) => (
-            <View key={item._id} style={styles.listRow}>
+      <SurfaceCard style={styles.sectionCard}>
+        <SectionHeading
+          title="By donation type"
+          caption="A quick distribution snapshot across your active categories."
+        />
+        {(stats?.byType ?? []).map((item: any, index: number) => (
+          <View
+            key={item._id}
+            style={[styles.listRow, index === (stats?.byType?.length ?? 0) - 1 && styles.listRowLast]}>
+            <View>
               <Text style={styles.listLabel}>{item._id}</Text>
-              <View style={styles.listRight}>
-                <Text style={styles.listCount}>{item.count} donations</Text>
-                <Text style={styles.listAmount}>₹{Number(item.total).toLocaleString('en-IN')}</Text>
-              </View>
+              <Text style={styles.listCaption}>{item.count} donations</Text>
             </View>
-          ))}
-        </View>
-      )}
+            <Badge label={formatCurrency(item.total)} tone="primary" />
+          </View>
+        ))}
+        {stats?.byType?.length ? null : (
+          <Text style={styles.emptyText}>Donation type totals will appear here after records are added.</Text>
+        )}
+      </SurfaceCard>
 
-      {/* Recent Donations */}
-      {stats?.recentDonations?.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Donations</Text>
-          {stats.recentDonations.map((d: any) => (
-            <TouchableOpacity key={d._id} style={styles.recentRow} onPress={() => navigation.navigate('ReceiptPreview', { donationId: d._id })}>
-              <View>
-                <Text style={styles.recentName}>{d.donorName}</Text>
-                <Text style={styles.recentType}>{d.donationType} • {d.receiptNumber}</Text>
-              </View>
-              <View style={styles.recentRight}>
-                <Text style={styles.recentAmount}>₹{Number(d.amount).toLocaleString('en-IN')}</Text>
-                {d.whatsappSent && <Text style={styles.sentBadge}>✓ Sent</Text>}
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      <View style={{ height: 30 }} />
-    </ScrollView>
+      <SurfaceCard style={styles.sectionCard}>
+        <SectionHeading
+          title="Recent donations"
+          caption="Tap any record to open the receipt preview and share flow."
+          action={<Badge label={`${stats?.recentDonations?.length || 0} items`} />}
+        />
+        {(stats?.recentDonations ?? []).map((donation: any, index: number) => (
+          <TouchableOpacity
+            key={donation._id}
+            activeOpacity={0.9}
+            style={[
+              styles.recentRow,
+              index === (stats?.recentDonations?.length ?? 0) - 1 && styles.listRowLast,
+            ]}
+            onPress={() =>
+              navigation.navigate('ReceiptPreview', {
+                donationId: donation._id,
+                receiptUrl: donation.receiptUrl,
+                receiptNumber: donation.receiptNumber,
+                donorName: donation.donorName,
+                mobileNumber: donation.mobileNumber,
+              })
+            }>
+            <View style={styles.recentLeft}>
+              <Text style={styles.recentName}>{donation.donorName}</Text>
+              <Text style={styles.recentMeta}>
+                {donation.donationType} • {donation.receiptNumber}
+              </Text>
+            </View>
+            <View style={styles.recentRight}>
+              <Text style={styles.recentAmount}>{formatCurrency(donation.amount)}</Text>
+              <Badge
+                label={donation.whatsappSent ? 'WhatsApp sent' : 'Pending send'}
+                tone={donation.whatsappSent ? 'success' : 'warning'}
+              />
+            </View>
+          </TouchableOpacity>
+        ))}
+        {stats?.recentDonations?.length ? null : (
+          <Text style={styles.emptyText}>Recent donations will appear once you start recording entries.</Text>
+        )}
+      </SurfaceCard>
+    </PageScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F9F5' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { backgroundColor: G, padding: 20, paddingTop: 16, paddingBottom: 24 },
-  arabic: { color: GOLD, fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 },
-  welcome: { color: '#fff', fontSize: 18, fontWeight: '600', textAlign: 'center' },
-  cardRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 12, marginTop: 12 },
-  card: { flex: 1, borderRadius: 14, padding: 18, alignItems: 'center', elevation: 3 },
-  cardNum: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
-  cardLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 4 },
-  section: { margin: 16, backgroundColor: '#fff', borderRadius: 14, elevation: 2, overflow: 'hidden' },
-  sectionTitle: { padding: 14, fontSize: 15, fontWeight: 'bold', color: G, borderBottomWidth: 1, borderBottomColor: '#E8F5EE' },
-  listRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
-  listLabel: { fontSize: 14, color: '#333', fontWeight: '500' },
-  listRight: { alignItems: 'flex-end' },
-  listCount: { fontSize: 12, color: '#888' },
-  listAmount: { fontSize: 14, fontWeight: 'bold', color: G },
-  recentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
-  recentName: { fontSize: 14, fontWeight: '600', color: '#333' },
-  recentType: { fontSize: 12, color: '#888', marginTop: 2 },
-  recentRight: { alignItems: 'flex-end' },
-  recentAmount: { fontSize: 15, fontWeight: 'bold', color: G },
-  sentBadge: { fontSize: 11, color: '#4CAF50', marginTop: 2 },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  metricCard: {
+    width: '47%',
+    minHeight: 124,
+    justifyContent: 'space-between',
+    backgroundColor: palette.surface,
+  },
+  metricCardAccent: {
+    backgroundColor: palette.primaryDark,
+    borderColor: palette.primaryDark,
+    ...shadows.md,
+  },
+  metricCardMuted: {
+    backgroundColor: palette.surfaceStrong,
+  },
+  metricValue: {
+    color: palette.text,
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  metricValueAccent: {
+    color: palette.surface,
+  },
+  metricLabel: {
+    color: palette.textMuted,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  metricLabelAccent: {
+    color: 'rgba(244, 248, 243, 0.84)',
+  },
+  quickActionCard: {
+    width: '47%',
+    minHeight: 124,
+    justifyContent: 'space-between',
+    backgroundColor: palette.primarySoft,
+  },
+  quickActionTitle: {
+    color: palette.primaryDark,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  quickActionText: {
+    color: palette.textMuted,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: spacing.xs,
+  },
+  quickActionButton: {
+    minHeight: 42,
+    borderRadius: radius.sm,
+    marginTop: spacing.md,
+  },
+  sectionCard: {
+    marginBottom: spacing.lg,
+    paddingTop: spacing.lg,
+  },
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: palette.border,
+  },
+  listRowLast: {
+    paddingBottom: 0,
+  },
+  listLabel: {
+    color: palette.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  listCaption: {
+    color: palette.textMuted,
+    fontSize: 13,
+    marginTop: spacing.xs,
+  },
+  recentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: palette.border,
+  },
+  recentLeft: {
+    flex: 1,
+  },
+  recentRight: {
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  recentName: {
+    color: palette.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  recentMeta: {
+    color: palette.textMuted,
+    fontSize: 13,
+    marginTop: spacing.xs,
+  },
+  recentAmount: {
+    color: palette.primaryDark,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  emptyText: {
+    color: palette.textMuted,
+    fontSize: 14,
+    lineHeight: 21,
+    paddingTop: spacing.md,
+  },
 });

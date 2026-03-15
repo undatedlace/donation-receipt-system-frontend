@@ -1,10 +1,9 @@
 import React from 'react';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../hooks/useAuth';
-
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import DashboardScreen from '../screens/dashboard/DashboardScreen';
@@ -13,27 +12,104 @@ import ReceiptPreviewScreen from '../screens/donations/ReceiptPreviewScreen';
 import HistoryScreen from '../screens/history/HistoryScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import UsersScreen from '../screens/users/UsersScreen';
+import { navigationTheme, palette, radius, shadows } from '../theme/theme';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const G = '#1B6B3A';
-const GOLD = '#C8963E';
-const GREY = '#9E9E9E';
-
-const TAB_ICONS: Record<string, string> = {
-  Dashboard: '📊',
-  Donate: '💚',
-  History: '📋',
-  Users: '👥',
-  Settings: '⚙️',
-};
-
-function TabIcon({ name, color }: { name: string; color: string }) {
+function DashboardIcon({ color }: { color: string }) {
   return (
-    <Text style={{ fontSize: 22, color, includeFontPadding: false }}>{TAB_ICONS[name] ?? '●'}</Text>
+    <View style={styles.gridIcon}>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <View key={index} style={[styles.gridCell, { backgroundColor: color }]} />
+      ))}
+    </View>
   );
 }
+
+function DonateIcon({ color }: { color: string }) {
+  return (
+    <View style={[styles.plusCircle, { borderColor: color }]}>
+      <View style={[styles.plusHorizontal, { backgroundColor: color }]} />
+      <View style={[styles.plusVertical, { backgroundColor: color }]} />
+    </View>
+  );
+}
+
+function HistoryIcon({ color }: { color: string }) {
+  return (
+    <View style={styles.historyIcon}>
+      {[0, 1, 2].map(index => (
+        <View
+          key={index}
+          style={[
+            styles.historyLine,
+            HISTORY_LINE_STYLES[index],
+            styles[`historyLineOffset${index}` as keyof typeof styles],
+            { backgroundColor: color },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+function UsersIcon({ color }: { color: string }) {
+  return (
+    <View style={styles.usersIcon}>
+      <View style={[styles.userHeadPrimary, { borderColor: color }]} />
+      <View style={[styles.userHeadSecondary, { borderColor: color }]} />
+      <View style={[styles.userBodyPrimary, { borderColor: color }]} />
+      <View style={[styles.userBodySecondary, { borderColor: color }]} />
+    </View>
+  );
+}
+
+function SettingsIcon({ color }: { color: string }) {
+  return (
+    <View style={styles.settingsIcon}>
+      {[0, 1, 2].map(index => (
+        <View
+          key={index}
+          style={[
+            styles.settingsTrack,
+            SETTINGS_TRACK_STYLES[index],
+            { backgroundColor: color },
+          ]}>
+          <View
+            style={[
+              styles.settingsKnob,
+              SETTINGS_KNOB_STYLES[index],
+              { backgroundColor: color },
+            ]}
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function renderTabIcon(name: string, color: string) {
+  switch (name) {
+    case 'Dashboard':
+      return <DashboardIcon color={color} />;
+    case 'Donate':
+      return <DonateIcon color={color} />;
+    case 'History':
+      return <HistoryIcon color={color} />;
+    case 'Users':
+      return <UsersIcon color={color} />;
+    case 'Settings':
+      return <SettingsIcon color={color} />;
+    default:
+      return <View style={[styles.gridCell, { backgroundColor: color }]} />;
+  }
+}
+
+const createTabBarIcon =
+  (routeName: string) =>
+  ({ color }: { color: string }) =>
+    renderTabIcon(routeName, color);
 
 function MainTabs() {
   const { user } = useAuth();
@@ -43,77 +119,23 @@ function MainTabs() {
 
   return (
     <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: G,
-        tabBarInactiveTintColor: GREY,
-        tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopWidth: 0,
-          elevation: 12,
-          shadowColor: '#000',
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: -3 },
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 6,
-        },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
-        headerStyle: { backgroundColor: G, elevation: 0, shadowOpacity: 0 },
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: '700', fontSize: 17 },
-        headerTitleAlign: 'center',
-        headerRight: () => (
-          <Text style={{ color: GOLD, fontSize: 17, marginRight: 14 }}>☪</Text>
-        ),
-      }}>
-      <Tab.Screen
-        name="Dashboard"
-        component={DashboardScreen}
-        options={{
-          tabBarLabel: 'Dashboard',
-          tabBarIcon: ({ color }) => <TabIcon name="Dashboard" color={color} />,
-          headerTitle: 'Noori Donation',
-        }}
-      />
-      <Tab.Screen
-        name="Donate"
-        component={DonationFormScreen}
-        options={{
-          tabBarLabel: 'Donate',
-          tabBarIcon: ({ color }) => <TabIcon name="Donate" color={color} />,
-          headerTitle: 'New Donation',
-        }}
-      />
-      <Tab.Screen
-        name="History"
-        component={HistoryScreen}
-        options={{
-          tabBarLabel: 'History',
-          tabBarIcon: ({ color }) => <TabIcon name="History" color={color} />,
-          headerTitle: 'Donation History',
-        }}
-      />
-      {isAdmin && (
-        <Tab.Screen
-          name="Users"
-          component={UsersScreen}
-          options={{
-            tabBarLabel: 'Users',
-            tabBarIcon: ({ color }) => <TabIcon name="Users" color={color} />,
-            headerTitle: 'User Management',
-          }}
-        />
-      )}
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          tabBarLabel: 'Settings',
-          tabBarIcon: ({ color }) => <TabIcon name="Settings" color={color} />,
-          headerTitle: 'Settings',
-        }}
-      />
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        sceneStyle: { backgroundColor: palette.background },
+        tabBarHideOnKeyboard: true,
+        tabBarActiveTintColor: palette.primaryDark,
+        tabBarInactiveTintColor: palette.textSoft,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarIconStyle: styles.tabIconWrap,
+        tabBarStyle: styles.tabBar,
+        tabBarItemStyle: styles.tabBarItem,
+        tabBarIcon: createTabBarIcon(route.name),
+      })}>
+      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="Donate" component={DonationFormScreen} options={{ tabBarLabel: 'Donate' }} />
+      <Tab.Screen name="History" component={HistoryScreen} />
+      {isAdmin ? <Tab.Screen name="Users" component={UsersScreen} /> : null}
+      <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }
@@ -123,15 +145,15 @@ export default function AppNavigator() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1B6B3A' }}>
-        <ActivityIndicator size="large" color="#C8963E" />
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator color={palette.primary} size="large" />
       </View>
     );
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <NavigationContainer theme={navigationTheme}>
+      <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.background } }}>
         {!token ? (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
@@ -143,7 +165,15 @@ export default function AppNavigator() {
             <Stack.Screen
               name="ReceiptPreview"
               component={ReceiptPreviewScreen}
-              options={{ headerShown: true, title: 'Receipt Preview', headerStyle: { backgroundColor: '#1B6B3A' }, headerTintColor: '#fff' }}
+              options={{
+                headerShown: true,
+                title: 'Receipt Preview',
+                headerShadowVisible: false,
+                headerTitleStyle: styles.stackTitle,
+                headerStyle: { backgroundColor: palette.surface },
+                headerTintColor: palette.text,
+                contentStyle: { backgroundColor: palette.background },
+              }}
             />
           </>
         )}
@@ -151,3 +181,196 @@ export default function AppNavigator() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingScreen: {
+    flex: 1,
+    backgroundColor: palette.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stackTitle: {
+    color: palette.text,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  tabBar: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: Platform.OS === 'ios' ? 18 : 12,
+    height: 74,
+    borderTopWidth: 0,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.surface,
+    borderRadius: radius.xl,
+    paddingTop: 10,
+    paddingBottom: 10,
+    paddingHorizontal: 8,
+    ...shadows.lg,
+  },
+  tabBarItem: {
+    borderRadius: radius.md,
+  },
+  tabIconWrap: {
+    marginBottom: 2,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  gridIcon: {
+    width: 20,
+    height: 20,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  gridCell: {
+    width: 8,
+    height: 8,
+    borderRadius: 3,
+  },
+  plusCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  plusHorizontal: {
+    width: 10,
+    height: 1.8,
+    borderRadius: 999,
+  },
+  plusVertical: {
+    position: 'absolute',
+    width: 1.8,
+    height: 10,
+    borderRadius: 999,
+  },
+  historyIcon: {
+    width: 18,
+    height: 18,
+    position: 'relative',
+  },
+  historyLine: {
+    position: 'absolute',
+    height: 2,
+    borderRadius: 999,
+    right: 0,
+  },
+  historyLineWide: {
+    width: 16,
+  },
+  historyLineShort: {
+    width: 12,
+  },
+  historyLineOffset0: {
+    top: 0,
+  },
+  historyLineOffset1: {
+    top: 6,
+  },
+  historyLineOffset2: {
+    top: 12,
+  },
+  usersIcon: {
+    width: 22,
+    height: 18,
+    position: 'relative',
+  },
+  userHeadPrimary: {
+    position: 'absolute',
+    left: 2,
+    top: 0,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.6,
+  },
+  userHeadSecondary: {
+    position: 'absolute',
+    right: 1,
+    top: 2,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    borderWidth: 1.4,
+    opacity: 0.9,
+  },
+  userBodyPrimary: {
+    position: 'absolute',
+    left: 0,
+    bottom: 1,
+    width: 12,
+    height: 6,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderWidth: 1.6,
+    borderBottomWidth: 0,
+  },
+  userBodySecondary: {
+    position: 'absolute',
+    right: 0,
+    bottom: 2,
+    width: 9,
+    height: 5,
+    borderTopLeftRadius: 7,
+    borderTopRightRadius: 7,
+    borderWidth: 1.4,
+    borderBottomWidth: 0,
+    opacity: 0.9,
+  },
+  settingsIcon: {
+    width: 18,
+    height: 18,
+    position: 'relative',
+  },
+  settingsTrack: {
+    position: 'absolute',
+    left: 0,
+    width: 18,
+    height: 2,
+    borderRadius: 999,
+  },
+  settingsTrackOffset0: {
+    top: 0,
+  },
+  settingsTrackOffset1: {
+    top: 6,
+  },
+  settingsTrackOffset2: {
+    top: 12,
+  },
+  settingsKnob: {
+    position: 'absolute',
+    top: -2,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  knobLeftPrimary: {
+    left: 4,
+  },
+  knobLeftSecondary: {
+    left: 9,
+  },
+  knobLeftTertiary: {
+    left: 2,
+  },
+});
+
+const HISTORY_LINE_STYLES = [styles.historyLineWide, styles.historyLineWide, styles.historyLineShort];
+const SETTINGS_TRACK_STYLES = [
+  styles.settingsTrackOffset0,
+  styles.settingsTrackOffset1,
+  styles.settingsTrackOffset2,
+];
+const SETTINGS_KNOB_STYLES = [
+  styles.knobLeftPrimary,
+  styles.knobLeftSecondary,
+  styles.knobLeftTertiary,
+];

@@ -1,44 +1,55 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  Alert, Linking, Share, ScrollView,
+  Alert,
+  Linking,
+  Share,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { sendWhatsApp, generateReceipt } from '../../services/api';
-
-const G = '#1B6B3A';
-const GOLD = '#C8963E';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Page,
+  PageHeader,
+  SurfaceCard,
+} from '../../components/ui/primitives';
+import { generateReceipt, sendWhatsApp } from '../../services/api';
+import { palette, spacing } from '../../theme/theme';
 
 export default function ReceiptPreviewScreen({ route }: any) {
   const { donationId, receiptUrl, receiptNumber, donorName, mobileNumber } = route.params || {};
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [currentUrl, setCurrentUrl] = useState(receiptUrl);
 
   const handleSendWhatsApp = async () => {
     setSending(true);
+
     try {
       await sendWhatsApp(donationId);
       setSent(true);
-      Alert.alert('✅ Sent!', `Receipt sent to ${mobileNumber} via WhatsApp`);
-    } catch (e: any) {
-      const msg = e?.response?.data?.message || 'Failed to send. WhatsApp may not be connected.';
-      // Fallback: open WhatsApp manually
-      Alert.alert(
-        'Send via WhatsApp',
-        'Automated send failed. Open WhatsApp manually?',
-        [
-          {
-            text: 'Open WhatsApp',
-            onPress: () => {
-              const number = mobileNumber?.replace(/\D/g, '');
-              const text = encodeURIComponent(`Assalamu Alaikum ${donorName},\n\nPlease find your donation receipt:\n${currentUrl}`);
-              Linking.openURL(`whatsapp://send?phone=${number}&text=${text}`);
-            },
+      Alert.alert('Receipt sent', `Receipt sent to ${mobileNumber} via WhatsApp.`);
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || 'Failed to send automatically. Open WhatsApp manually instead?';
+
+      Alert.alert('Send via WhatsApp', message, [
+        {
+          text: 'Open WhatsApp',
+          onPress: () => {
+            const number = mobileNumber?.replace(/\D/g, '');
+            const text = encodeURIComponent(
+              `Assalamu Alaikum ${donorName},\n\nPlease find your donation receipt:\n${currentUrl}`,
+            );
+            Linking.openURL(`whatsapp://send?phone=${number}&text=${text}`);
           },
-          { text: 'Cancel', style: 'cancel' },
-        ],
-      );
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
     } finally {
       setSending(false);
     }
@@ -51,99 +62,169 @@ export default function ReceiptPreviewScreen({ route }: any) {
         url: currentUrl,
         title: `Receipt ${receiptNumber}`,
       });
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
     }
   };
 
   const handleRegenerate = async () => {
+    setRegenerating(true);
+
     try {
       const { data } = await generateReceipt(donationId);
       setCurrentUrl(data.url);
-      Alert.alert('Done', 'Receipt regenerated!');
-    } catch (e) {
+      Alert.alert('Receipt regenerated', 'The preview has been refreshed with the latest receipt.');
+    } catch {
       Alert.alert('Error', 'Failed to regenerate receipt');
+    } finally {
+      setRegenerating(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      {/* PDF Preview */}
-      <View style={styles.preview}>
-        {currentUrl ? (
-          <WebView
-            source={{ uri: currentUrl }}
-            style={{ flex: 1 }}
-            startInLoadingState
-            renderLoading={() => (
-              <View style={styles.loadingWrap}>
-                <ActivityIndicator size="large" color={G} />
-                <Text style={styles.loadingText}>Loading receipt...</Text>
-              </View>
-            )}
-          />
-        ) : (
-          <View style={styles.loadingWrap}>
-            <Text style={styles.noReceipt}>No receipt URL available</Text>
-            <TouchableOpacity style={styles.regenBtn} onPress={handleRegenerate}>
-              <Text style={styles.regenBtnText}>Generate Now</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+    <Page>
+      <View style={styles.container}>
+        <PageHeader
+          compact
+          eyebrow="Receipt"
+          title={receiptNumber || 'Draft preview'}
+          subtitle={`${donorName || 'Unknown donor'}${mobileNumber ? ` • ${mobileNumber}` : ''}`}
+          trailing={
+            <Badge
+              label={sent ? 'Delivered' : 'Ready to share'}
+              tone={sent ? 'success' : 'primary'}
+            />
+          }
+        />
 
-      {/* Action Buttons */}
-      <View style={styles.actions}>
-        <View style={styles.infoRow}>
-          <Text style={styles.receiptNum}>{receiptNumber}</Text>
-          <Text style={styles.donorInfo}>{donorName} • {mobileNumber}</Text>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.whatsappBtn, sent && styles.sentBtn]}
-          onPress={handleSendWhatsApp}
-          disabled={sending || sent}>
-          {sending ? (
-            <ActivityIndicator color="#fff" />
+        <SurfaceCard style={styles.previewCard}>
+          {currentUrl ? (
+            <WebView
+              source={{ uri: currentUrl }}
+              style={styles.webview}
+              startInLoadingState
+              renderLoading={() => (
+                <View style={styles.loaderWrap}>
+                  <Text style={styles.loaderTitle}>Loading receipt preview</Text>
+                  <Text style={styles.loaderText}>This usually takes a moment.</Text>
+                </View>
+              )}
+            />
           ) : (
-            <Text style={styles.whatsappBtnText}>
-              {sent ? '✓ Sent to WhatsApp' : '📲 Send to WhatsApp'}
-            </Text>
+            <View style={styles.emptyPreview}>
+              <EmptyState
+                title="No receipt URL available"
+                subtitle="Generate the receipt again to refresh the preview and download link."
+              />
+              <Button
+                label="Generate receipt"
+                loading={regenerating}
+                onPress={handleRegenerate}
+                style={styles.regenButton}
+              />
+            </View>
           )}
-        </TouchableOpacity>
+        </SurfaceCard>
 
-        <View style={styles.secondaryRow}>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={handleShare}>
-            <Text style={styles.secondaryBtnText}>⬆ Share</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={() => currentUrl && Linking.openURL(currentUrl)}>
-            <Text style={styles.secondaryBtnText}>⬇ Download</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={handleRegenerate}>
-            <Text style={styles.secondaryBtnText}>↻ Regen</Text>
-          </TouchableOpacity>
-        </View>
+        <SurfaceCard style={styles.actionsCard}>
+          <Text style={styles.actionsTitle}>Actions</Text>
+          <Text style={styles.actionsSubtitle}>
+            Send the receipt through WhatsApp, share the link, or regenerate the PDF.
+          </Text>
+
+          <Button
+            label={sent ? 'Sent to WhatsApp' : 'Send to WhatsApp'}
+            variant={sent ? 'success' : 'primary'}
+            loading={sending}
+            disabled={sent}
+            onPress={handleSendWhatsApp}
+            style={styles.mainAction}
+          />
+
+          <View style={styles.secondaryRow}>
+            <Button label="Share" variant="secondary" onPress={handleShare} style={styles.secondaryAction} />
+            <Button
+              label="Download"
+              variant="ghost"
+              onPress={() => currentUrl && Linking.openURL(currentUrl)}
+              style={styles.secondaryAction}
+            />
+            <Button
+              label="Regenerate"
+              variant="ghost"
+              loading={regenerating}
+              onPress={handleRegenerate}
+              style={styles.secondaryAction}
+            />
+          </View>
+        </SurfaceCard>
       </View>
-    </View>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F9F5' },
-  preview: { flex: 1, backgroundColor: '#eee' },
-  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 10, color: '#666' },
-  noReceipt: { color: '#666', fontSize: 16, marginBottom: 16 },
-  regenBtn: { backgroundColor: G, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 12 },
-  regenBtnText: { color: '#fff', fontWeight: 'bold' },
-  actions: { backgroundColor: '#fff', padding: 16, elevation: 8, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8 },
-  infoRow: { marginBottom: 12 },
-  receiptNum: { fontSize: 15, fontWeight: 'bold', color: G },
-  donorInfo: { fontSize: 13, color: '#666', marginTop: 2 },
-  whatsappBtn: { backgroundColor: '#25D366', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 10 },
-  sentBtn: { backgroundColor: '#4CAF50' },
-  whatsappBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  secondaryRow: { flexDirection: 'row', gap: 8 },
-  secondaryBtn: { flex: 1, borderWidth: 1.5, borderColor: G, borderRadius: 10, padding: 12, alignItems: 'center' },
-  secondaryBtnText: { color: G, fontWeight: '600', fontSize: 13 },
+  container: {
+    flex: 1,
+    padding: spacing.screen,
+    gap: spacing.lg,
+  },
+  previewCard: {
+    flex: 1,
+    overflow: 'hidden',
+    padding: 0,
+  },
+  webview: {
+    flex: 1,
+    backgroundColor: palette.surfaceStrong,
+  },
+  loaderWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.surfaceStrong,
+    paddingHorizontal: spacing.xl,
+  },
+  loaderTitle: {
+    color: palette.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  loaderText: {
+    color: palette.textMuted,
+    fontSize: 14,
+    marginTop: spacing.sm,
+  },
+  emptyPreview: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  regenButton: {
+    marginTop: spacing.lg,
+  },
+  actionsCard: {
+    gap: spacing.sm,
+  },
+  actionsTitle: {
+    color: palette.text,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  actionsSubtitle: {
+    color: palette.textMuted,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  mainAction: {
+    marginTop: spacing.sm,
+  },
+  secondaryRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  secondaryAction: {
+    flex: 1,
+  },
 });
