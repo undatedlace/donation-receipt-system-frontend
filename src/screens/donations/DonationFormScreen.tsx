@@ -17,7 +17,6 @@ import {
   Button,
   FieldGroup,
   InputField,
-  PageHeader,
   PageScroll,
   SectionHeading,
   SurfaceCard,
@@ -175,13 +174,6 @@ export default function DonationFormScreen({ navigation }: any) {
 
   return (
     <PageScroll>
-      <PageHeader
-        eyebrow="New donation"
-        title="Capture donor details and generate the receipt instantly."
-        subtitle="The form is organized into clean sections so data entry feels fast, even during busy collection periods."
-        trailing={<Badge label={user?.name || 'Recorder'} tone="success" />}
-      />
-
       <SurfaceCard style={styles.sectionCard}>
         <SectionHeading title="Donor details" caption="Basic contact information used for the record and WhatsApp receipt delivery." />
 
