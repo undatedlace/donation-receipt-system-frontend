@@ -18,12 +18,12 @@ import {
   FieldGroup,
   InputField,
   Page,
-  PageHeader,
   SectionHeading,
   SurfaceCard,
 } from '../../components/ui/primitives';
+import { useAuth } from '../../hooks/useAuth';
 import { useUsers } from '../../hooks/useUsers';
-import { palette, radius, spacing } from '../../theme/theme';
+import { fs, palette, radius, spacing } from '../../theme/theme';
 
 const ROLES = ['admin', 'user', 'internal-admin'];
 const ROLE_TONES: Record<string, 'danger' | 'primary' | 'info'> = {
@@ -99,6 +99,11 @@ function UserSheet({
 }
 
 export default function UsersScreen() {
+  const { user: authUser } = useAuth();
+  const canWrite = Array.isArray(authUser?.roles)
+    ? authUser.roles.includes('admin')
+    : authUser?.role === 'admin';
+
   const { users, loading, refreshing, fetchUsers, refresh, addUser, editUser, removeUser } = useUsers();
 
   const [addVisible, setAddVisible] = useState(false);
@@ -198,16 +203,10 @@ export default function UsersScreen() {
 
   const renderHeader = () => (
     <View style={styles.headerWrap}>
-      <PageHeader
-        eyebrow="Users"
-        title="Manage staff access and role assignments."
-        subtitle="Add new accounts, update permissions, and keep the team roster clean from one admin view."
-        trailing={<Badge label={`${users.length} total`} tone="primary" />}
-      />
 
       <SurfaceCard style={styles.toolbarCard}>
         <SectionHeading title="Team members" caption="Role-based access control" />
-        <Button label="Add user" onPress={() => setAddVisible(true)} />
+        {canWrite && <Button label="Add user" onPress={() => setAddVisible(true)} />}
       </SurfaceCard>
     </View>
   );
@@ -235,8 +234,12 @@ export default function UsersScreen() {
         </View>
 
         <View style={styles.actionsColumn}>
-          <Button label="Edit" variant="secondary" onPress={() => openEdit(item)} style={styles.inlineButton} />
-          <Button label="Delete" variant="ghost" onPress={() => handleDelete(item)} style={styles.inlineButton} />
+          {canWrite && (
+            <Button label="Edit" variant="secondary" onPress={() => openEdit(item)} style={styles.inlineButton} />
+          )}
+          {canWrite && (
+            <Button label="Delete" variant="ghost" onPress={() => handleDelete(item)} style={styles.inlineButton} />
+          )}
         </View>
       </SurfaceCard>
     );

@@ -1,5 +1,14 @@
 import type { Theme } from '@react-navigation/native';
-import { Platform } from 'react-native';
+import { Dimensions, PixelRatio, Platform } from 'react-native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const BASE_WIDTH = 390; // iPhone 14 / Pixel 7 baseline
+
+/** Scale a font size proportionally to the device screen width. */
+export const fs = (size: number): number => {
+  const scaled = size * (SCREEN_WIDTH / BASE_WIDTH);
+  return Math.round(PixelRatio.roundToNearestPixel(scaled));
+};
 
 export const palette = {
   background: '#F4F8F3',

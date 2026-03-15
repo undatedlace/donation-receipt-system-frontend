@@ -113,9 +113,15 @@ const createTabBarIcon =
 
 function MainTabs() {
   const { user } = useAuth();
-  const isAdmin = Array.isArray(user?.roles)
-    ? user.roles.includes('admin')
-    : user?.role === 'admin';
+  const roles: string[] = Array.isArray(user?.roles)
+    ? user.roles
+    : user?.role
+    ? [user.role]
+    : ['user'];
+
+  const isAdmin         = roles.includes('admin');
+  const isInternalAdmin = roles.includes('internal-admin');
+  const isUserOnly      = !isAdmin && !isInternalAdmin;
 
   return (
     <Tab.Navigator
@@ -131,10 +137,19 @@ function MainTabs() {
         tabBarItemStyle: styles.tabBarItem,
         tabBarIcon: createTabBarIcon(route.name),
       })}>
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Donate" component={DonationFormScreen} options={{ tabBarLabel: 'Donate' }} />
+      {/* admin + internal-admin: see Dashboard */}
+      {(isAdmin || isInternalAdmin) && (
+        <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      )}
+      {/* admin + internal-admin: see Donate */}
+      {(isAdmin || isInternalAdmin) && (
+        <Tab.Screen name="Donate" component={DonationFormScreen} options={{ tabBarLabel: 'Donate' }} />
+      )}
+      {/* everyone: see History */}
       <Tab.Screen name="History" component={HistoryScreen} />
-      {isAdmin ? <Tab.Screen name="Users" component={UsersScreen} /> : null}
+      {/* everyone: see Users (view-only for user role, admin-only writes handled by backend) */}
+      <Tab.Screen name="Users" component={UsersScreen} />
+      {/* everyone: see Settings (logout is available to all roles) */}
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );

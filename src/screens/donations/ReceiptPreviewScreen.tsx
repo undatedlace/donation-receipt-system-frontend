@@ -18,6 +18,7 @@ import {
 } from '../../components/ui/primitives';
 import { generateReceipt } from '../../services/api';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
+import { useAuth } from '../../hooks/useAuth';
 import { palette, spacing } from '../../theme/theme';
 
 /** Wraps an S3 PDF URL in Google Docs Viewer so Android WebView can render it. */
@@ -27,6 +28,10 @@ const toViewerUrl = (url: string) =>
 export default function ReceiptPreviewScreen({ route }: any) {
   const { donationId, receiptUrl, receiptNumber, donorName, mobileNumber } = route.params || {};
   const { sending, send } = useWhatsApp();
+  const { user } = useAuth();
+  const canSendWhatsApp = Array.isArray(user?.roles)
+    ? user.roles.some(r => r === 'admin' || r === 'internal-admin')
+    : user?.role !== 'user';
   const [sent, setSent] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [currentUrl, setCurrentUrl] = useState(receiptUrl);
@@ -150,14 +155,16 @@ export default function ReceiptPreviewScreen({ route }: any) {
             Send the receipt through WhatsApp, share the link, or regenerate the PDF.
           </Text>
 
-          <Button
-            label={sent ? 'Sent to WhatsApp' : 'Send to WhatsApp'}
-            variant={sent ? 'success' : 'primary'}
-            loading={sending}
-            disabled={sent}
-            onPress={handleSendWhatsApp}
-            style={styles.mainAction}
-          />
+          {canSendWhatsApp && (
+            <Button
+              label={sent ? 'Sent to WhatsApp' : 'Send to WhatsApp'}
+              variant={sent ? 'success' : 'primary'}
+              loading={sending}
+              disabled={sent}
+              onPress={handleSendWhatsApp}
+              style={styles.mainAction}
+            />
+          )}
 
           <View style={styles.secondaryRow}>
             <Button label="Share" variant="secondary" onPress={handleShare} style={styles.secondaryAction} />

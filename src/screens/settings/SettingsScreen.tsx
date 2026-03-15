@@ -3,7 +3,6 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import {
   Badge,
   Button,
-  PageHeader,
   PageScroll,
   SectionHeading,
   SurfaceCard,
@@ -26,13 +25,6 @@ export default function SettingsScreen() {
 
   return (
     <PageScroll>
-      <PageHeader
-        eyebrow="Settings"
-        title="Manage profile details, delivery status, and export access."
-        subtitle="This screen keeps operational info close without pulling you out of the app flow."
-        trailing={<Badge label="Workspace" tone="primary" />}
-      />
-
       <SurfaceCard style={styles.card}>
         <SectionHeading title="Profile" caption="Current signed-in account" />
         <Text style={styles.profileName}>{fullName}</Text>
@@ -41,26 +33,6 @@ export default function SettingsScreen() {
           {(Array.isArray(user?.roles) ? user.roles : [user?.role ?? 'user']).map((role: string) => (
             <Badge key={role} label={role} tone="success" style={styles.roleBadge} />
           ))}
-        </View>
-      </SurfaceCard>
-
-      <SurfaceCard style={styles.card}>
-        <SectionHeading
-          title="WhatsApp delivery"
-          caption="Receipt delivery channel used after donation creation"
-          action={<Badge label="Connected" tone="success" />}
-        />
-        <Text style={styles.copy}>
-          Receipts are sent through the Meta Cloud API after submission. Make sure your backend has
-          valid `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID` values in its environment.
-        </Text>
-      </SurfaceCard>
-
-      <SurfaceCard style={styles.card}>
-        <SectionHeading title="Export endpoint" caption="Backend route for CSV exports" />
-        <View style={styles.codeBlock}>
-          <Text style={styles.codeText}>GET /api/donations/export/csv</Text>
-          <Text style={styles.codeText}>Authorization: Bearer TOKEN</Text>
         </View>
       </SurfaceCard>
 

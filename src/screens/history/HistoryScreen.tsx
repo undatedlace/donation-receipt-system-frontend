@@ -16,7 +16,6 @@ import {
   EmptyState,
   InputField,
   Page,
-  PageHeader,
   SurfaceCard,
 } from '../../components/ui/primitives';
 import { useDonations } from '../../hooks/useDonations';
@@ -96,13 +95,6 @@ export default function HistoryScreen({ navigation }: any) {
 
   const renderHeader = () => (
     <View style={styles.headerWrap}>
-      <PageHeader
-        eyebrow="History"
-        title="Search, filter, and reopen previous donation receipts."
-        subtitle="Use keyword search and donation-type filters to reach any record quickly."
-        trailing={<Badge label={`${donations.length} results`} tone="primary" />}
-      />
-
       <SurfaceCard style={styles.searchCard}>
         <InputField
           value={search}

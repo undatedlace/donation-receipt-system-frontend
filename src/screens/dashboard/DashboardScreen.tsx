@@ -19,7 +19,9 @@ import {
 } from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
 import { useStats } from '../../hooks/useStats';
-import { palette, radius, shadows, spacing } from '../../theme/theme';
+import { fs, palette, radius, shadows, spacing } from '../../theme/theme';
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 const formatCurrency = (value: number) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
 
@@ -47,6 +49,41 @@ function MetricCard({
   );
 }
 
+function MonthlyBarChart({ data }: { data: Array<{ _id: { year: number; month: number }; total: number; count: number }> }) {
+  if (!data || data.length === 0) {
+    return <Text style={styles.emptyText}>Monthly data will appear once donations are recorded.</Text>;
+  }
+
+  const last6 = data.slice(-6);
+  const maxVal = Math.max(...last6.map(d => d.total), 1);
+
+  return (
+    <View style={styles.chartWrap}>
+      {last6.map((item, index) => {
+        const heightPct = item.total / maxVal;
+        const barHeight = Math.max(4, Math.round(heightPct * 100));
+        const label = MONTH_NAMES[(item._id.month - 1) % 12];
+        return (
+          <View key={index} style={styles.chartCol}>
+            <Text style={styles.chartBarValue}>
+              {item.total >= 1000 ? `${(item.total / 1000).toFixed(1)}k` : item.total}
+            </Text>
+            <View style={styles.chartBarTrack}>
+              <View
+                style={[
+                  styles.chartBar,
+                  { height: barHeight, backgroundColor: index === last6.length - 1 ? palette.primary : palette.primarySoft },
+                ]}
+              />
+            </View>
+            <Text style={styles.chartBarLabel}>{label}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function DashboardScreen({ navigation }: any) {
   const { user } = useAuth();
   const { stats, loading, refreshing, fetchStats, refresh } = useStats();
@@ -56,10 +93,6 @@ export default function DashboardScreen({ navigation }: any) {
       fetchStats();
     }, [fetchStats]),
   );
-
-  const onRefresh = () => {
-    refresh();
-  };
 
   if (loading) {
     return (
@@ -74,7 +107,7 @@ export default function DashboardScreen({ navigation }: any) {
   return (
     <PageScroll
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.primary]} />
+        <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[palette.primary]} />
       }>
       <PageHeader
         eyebrow="Dashboard"
@@ -93,6 +126,15 @@ export default function DashboardScreen({ navigation }: any) {
           <Button label="Create receipt" onPress={() => navigation.navigate('Donate')} style={styles.quickActionButton} />
         </SurfaceCard>
       </View>
+
+      {/* ─── Monthly trend bar chart ─── */}
+      <SurfaceCard style={styles.sectionCard}>
+        <SectionHeading
+          title="Monthly trend"
+          caption="Donation amount collected over the last 6 months."
+        />
+        <MonthlyBarChart data={stats?.monthlyTrend ?? []} />
+      </SurfaceCard>
 
       <SurfaceCard style={styles.sectionCard}>
         <SectionHeading
@@ -162,11 +204,7 @@ export default function DashboardScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -174,62 +212,18 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     marginBottom: spacing.lg,
   },
-  metricCard: {
-    width: '47%',
-    minHeight: 124,
-    justifyContent: 'space-between',
-    backgroundColor: palette.surface,
-  },
-  metricCardAccent: {
-    backgroundColor: palette.primaryDark,
-    borderColor: palette.primaryDark,
-    ...shadows.md,
-  },
-  metricCardMuted: {
-    backgroundColor: palette.surfaceStrong,
-  },
-  metricValue: {
-    color: palette.text,
-    fontSize: 28,
-    fontWeight: '800',
-  },
-  metricValueAccent: {
-    color: palette.surface,
-  },
-  metricLabel: {
-    color: palette.textMuted,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  metricLabelAccent: {
-    color: 'rgba(244, 248, 243, 0.84)',
-  },
-  quickActionCard: {
-    width: '47%',
-    minHeight: 124,
-    justifyContent: 'space-between',
-    backgroundColor: palette.primarySoft,
-  },
-  quickActionTitle: {
-    color: palette.primaryDark,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  quickActionText: {
-    color: palette.textMuted,
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: spacing.xs,
-  },
-  quickActionButton: {
-    minHeight: 42,
-    borderRadius: radius.sm,
-    marginTop: spacing.md,
-  },
-  sectionCard: {
-    marginBottom: spacing.lg,
-    paddingTop: spacing.lg,
-  },
+  metricCard: { width: '47%', minHeight: 124, justifyContent: 'space-between', backgroundColor: palette.surface },
+  metricCardAccent: { backgroundColor: palette.primaryDark, borderColor: palette.primaryDark, ...shadows.md },
+  metricCardMuted: { backgroundColor: palette.surfaceStrong },
+  metricValue: { color: palette.text, fontSize: fs(28), fontWeight: '800' },
+  metricValueAccent: { color: palette.surface },
+  metricLabel: { color: palette.textMuted, fontSize: fs(13), fontWeight: '600' },
+  metricLabelAccent: { color: 'rgba(244, 248, 243, 0.84)' },
+  quickActionCard: { width: '47%', minHeight: 124, justifyContent: 'space-between', backgroundColor: palette.primarySoft },
+  quickActionTitle: { color: palette.primaryDark, fontSize: fs(18), fontWeight: '800' },
+  quickActionText: { color: palette.textMuted, fontSize: fs(13), lineHeight: 19, marginTop: spacing.xs },
+  quickActionButton: { minHeight: 42, borderRadius: radius.sm, marginTop: spacing.md },
+  sectionCard: { marginBottom: spacing.lg, paddingTop: spacing.lg },
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -238,54 +232,37 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: palette.border,
   },
-  listRowLast: {
-    paddingBottom: 0,
-  },
-  listLabel: {
-    color: palette.text,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  listCaption: {
-    color: palette.textMuted,
-    fontSize: 13,
-    marginTop: spacing.xs,
-  },
+  listRowLast: { paddingBottom: 0 },
+  listLabel: { color: palette.text, fontSize: fs(15), fontWeight: '700' },
+  listCaption: { color: palette.textMuted, fontSize: fs(12), marginTop: 2 },
   recentRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.md,
     paddingVertical: spacing.md,
     borderTopWidth: 1,
     borderTopColor: palette.border,
   },
-  recentLeft: {
-    flex: 1,
-  },
-  recentRight: {
+  recentLeft: { flex: 1, paddingRight: spacing.md },
+  recentName: { color: palette.text, fontSize: fs(15), fontWeight: '700' },
+  recentMeta: { color: palette.textMuted, fontSize: fs(12), marginTop: 2 },
+  recentRight: { alignItems: 'flex-end', gap: spacing.xs },
+  recentAmount: { color: palette.primaryDark, fontSize: fs(15), fontWeight: '800' },
+  emptyText: { color: palette.textSoft, fontSize: fs(13), paddingVertical: spacing.md },
+  // ─── Chart ────────────────────────────────────────────────────────────────────
+  chartWrap: {
+    flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: spacing.sm,
-  },
-  recentName: {
-    color: palette.text,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  recentMeta: {
-    color: palette.textMuted,
-    fontSize: 13,
-    marginTop: spacing.xs,
-  },
-  recentAmount: {
-    color: palette.primaryDark,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  emptyText: {
-    color: palette.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
+    justifyContent: 'space-between',
+    marginTop: spacing.lg,
+    height: 140,
+    borderTopWidth: 1,
+    borderTopColor: palette.border,
     paddingTop: spacing.md,
   },
+  chartCol: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 4 },
+  chartBarValue: { color: palette.textMuted, fontSize: fs(10), fontWeight: '600' },
+  chartBarTrack: { width: '68%', maxWidth: 36, height: 100, justifyContent: 'flex-end' },
+  chartBar: { width: '100%', borderRadius: 6, minHeight: 4 },
+  chartBarLabel: { color: palette.textSoft, fontSize: fs(11), fontWeight: '600' },
 });

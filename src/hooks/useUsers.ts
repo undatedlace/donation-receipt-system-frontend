@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { Alert } from 'react-native';
 import { createUser, deleteUser, getUsers, updateUser } from '../services/api';
 
 export interface User {
@@ -38,7 +39,9 @@ export function useUsers() {
       const { data } = await getUsers();
       setUsers(Array.isArray(data) ? data : data?.data ?? []);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? err?.message ?? 'Failed to load users');
+      const msg = err?.response?.data?.message ?? err?.message ?? 'Failed to load users';
+      setError(msg);
+      Alert.alert('Error loading users', msg);
     } finally {
       setLoading(false);
       setRefreshing(false);

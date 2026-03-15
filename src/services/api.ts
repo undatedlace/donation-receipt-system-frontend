@@ -55,5 +55,21 @@ export const getUsers = () => api.get('/users');
 export const createUser = (data: any) => api.post('/users', data);
 export const updateUser = (id: string, data: any) => api.patch(`/users/${id}`, data);
 export const deleteUser = (id: string) => api.delete(`/users/${id}`);
-
+// ─── QR Screenshot upload ──────────────────────────────────────────────────
+export const uploadQrImage = async (asset: {
+  uri: string;
+  type?: string;
+  fileName?: string;
+}): Promise<string> => {
+  const formData = new FormData();
+  formData.append('file', {
+    uri: asset.uri,
+    type: asset.type ?? 'image/jpeg',
+    name: asset.fileName ?? 'qr.jpg',
+  } as any);
+  const { data } = await api.post('/donations/upload-qr', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data.url;
+};
 export default api;
