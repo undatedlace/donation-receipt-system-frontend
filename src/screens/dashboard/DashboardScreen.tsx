@@ -72,7 +72,7 @@ function MonthlyBarChart({ data }: { data: Array<{ _id: { year: number; month: n
               <View
                 style={[
                   styles.chartBar,
-                  { height: barHeight, backgroundColor: index === last6.length - 1 ? palette.primary : palette.primarySoft },
+                  { height: barHeight, backgroundColor: index === last6.length - 1 ? palette.primary : palette.surfaceStrong },
                 ]}
               />
             </View>
@@ -213,13 +213,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   metricCard: { width: '47%', minHeight: 124, justifyContent: 'space-between', backgroundColor: palette.surface },
-  metricCardAccent: { backgroundColor: palette.primaryDark, borderColor: palette.primaryDark, ...shadows.md },
+  metricCardAccent: { backgroundColor: palette.primary, borderColor: palette.primary, ...shadows.sm },
   metricCardMuted: { backgroundColor: palette.surfaceStrong },
   metricValue: { color: palette.text, fontSize: fs(28), fontWeight: '800' },
   metricValueAccent: { color: palette.surface },
   metricLabel: { color: palette.textMuted, fontSize: fs(13), fontWeight: '600' },
   metricLabelAccent: { color: 'rgba(244, 248, 243, 0.84)' },
-  quickActionCard: { width: '47%', minHeight: 124, justifyContent: 'space-between', backgroundColor: palette.primarySoft },
+  quickActionCard: { width: '47%', minHeight: 124, justifyContent: 'space-between', backgroundColor: palette.primarySoft, borderColor: '#BBF7D0' },
   quickActionTitle: { color: palette.primaryDark, fontSize: fs(18), fontWeight: '800' },
   quickActionText: { color: palette.textMuted, fontSize: fs(13), lineHeight: 19, marginTop: spacing.xs },
   quickActionButton: { minHeight: 42, borderRadius: radius.sm, marginTop: spacing.md },

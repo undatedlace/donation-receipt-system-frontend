@@ -63,27 +63,27 @@ interface InputFieldProps extends TextInputProps {
 
 const badgeToneStyles: Record<Tone, { container: ViewStyle; text: TextStyle }> = {
   default: {
-    container: { backgroundColor: palette.surfaceStrong, borderColor: palette.border },
+    container: { backgroundColor: palette.surfaceMuted, borderColor: palette.borderStrong },
     text: { color: palette.textMuted },
   },
   primary: {
-    container: { backgroundColor: palette.primarySoft, borderColor: '#CFE7D6' },
+    container: { backgroundColor: palette.primarySoft, borderColor: '#BBF7D0' },
     text: { color: palette.primaryDark },
   },
   success: {
-    container: { backgroundColor: palette.accentSoft, borderColor: '#B8ECD7' },
+    container: { backgroundColor: palette.accentSoft, borderColor: '#86EFAC' },
     text: { color: palette.primaryDark },
   },
   warning: {
-    container: { backgroundColor: palette.warningSoft, borderColor: '#F8DDA9' },
+    container: { backgroundColor: palette.warningSoft, borderColor: '#FDE68A' },
     text: { color: '#92400E' },
   },
   danger: {
-    container: { backgroundColor: palette.dangerSoft, borderColor: '#F3C8C8' },
+    container: { backgroundColor: palette.dangerSoft, borderColor: '#FECACA' },
     text: { color: '#991B1B' },
   },
   info: {
-    container: { backgroundColor: palette.infoSoft, borderColor: '#A8EAE1' },
+    container: { backgroundColor: palette.infoSoft, borderColor: '#99F6E4' },
     text: { color: palette.info },
   },
 };
@@ -115,6 +115,9 @@ export function PageScroll({
   );
 }
 
+/**
+ * Clean shadcn-style page header — no green card, just clear typography.
+ */
 export function PageHeader({
   eyebrow,
   title,
@@ -123,14 +126,18 @@ export function PageHeader({
   compact = false,
 }: PageHeaderProps) {
   return (
-    <View style={[styles.headerCard, compact && styles.headerCompact]}>
-      <View style={styles.headerOrbTop} />
-      <View style={styles.headerOrbBottom} />
-      <View style={styles.headerContent}>
+    <View style={[styles.headerWrap, compact && styles.headerWrapCompact]}>
+      <View style={styles.headerRow}>
         <View style={styles.headerTextWrap}>
-          {eyebrow ? <Text style={styles.headerEyebrow}>{eyebrow}</Text> : null}
-          <Text style={styles.headerTitle}>{title}</Text>
-          {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
+          {eyebrow ? (
+            <Text style={styles.headerEyebrow}>{eyebrow}</Text>
+          ) : null}
+          <Text style={[styles.headerTitle, compact && styles.headerTitleCompact]}>
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text style={styles.headerSubtitle}>{subtitle}</Text>
+          ) : null}
         </View>
         {trailing ? <View style={styles.headerTrailing}>{trailing}</View> : null}
       </View>
@@ -171,7 +178,9 @@ export function SectionHeading({
 export function Badge({ label, tone = 'default', style, textStyle }: BadgeProps) {
   return (
     <View style={[styles.badge, badgeToneStyles[tone].container, style]}>
-      <Text style={[styles.badgeText, badgeToneStyles[tone].text, textStyle]}>{label}</Text>
+      <Text style={[styles.badgeText, badgeToneStyles[tone].text, textStyle]}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -185,12 +194,12 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const variantStyle = buttonStyles[variant];
+  const variantStyle = buttonVariants[variant];
   const isDisabled = disabled || loading;
 
   return (
     <TouchableOpacity
-      activeOpacity={0.9}
+      activeOpacity={0.85}
       disabled={isDisabled}
       style={[
         styles.buttonBase,
@@ -200,7 +209,7 @@ export function Button({
       ]}
       {...props}>
       {loading ? (
-        <ActivityIndicator color={variantStyle.loaderColor} />
+        <ActivityIndicator color={variantStyle.loaderColor} size="small" />
       ) : (
         <Text style={[styles.buttonText, variantStyle.text, textStyle]}>{label}</Text>
       )}
@@ -246,7 +255,7 @@ export function EmptyState({
   );
 }
 
-const buttonStyles: Record<
+const buttonVariants: Record<
   ButtonVariant,
   { container: ViewStyle; text: TextStyle; loaderColor: string }
 > = {
@@ -256,19 +265,10 @@ const buttonStyles: Record<
       borderColor: palette.primary,
       borderWidth: 1,
     },
-    text: { color: palette.surface },
-    loaderColor: palette.surface,
+    text: { color: '#FFFFFF' },
+    loaderColor: '#FFFFFF',
   },
   secondary: {
-    container: {
-      backgroundColor: palette.primarySoft,
-      borderColor: '#CFE7D6',
-      borderWidth: 1,
-    },
-    text: { color: palette.primaryDark },
-    loaderColor: palette.primaryDark,
-  },
-  ghost: {
     container: {
       backgroundColor: palette.surface,
       borderColor: palette.border,
@@ -277,19 +277,28 @@ const buttonStyles: Record<
     text: { color: palette.text },
     loaderColor: palette.text,
   },
+  ghost: {
+    container: {
+      backgroundColor: 'transparent',
+      borderColor: 'transparent',
+      borderWidth: 1,
+    },
+    text: { color: palette.textMuted },
+    loaderColor: palette.textMuted,
+  },
   danger: {
     container: {
       backgroundColor: palette.danger,
       borderColor: palette.danger,
       borderWidth: 1,
     },
-    text: { color: palette.surface },
-    loaderColor: palette.surface,
+    text: { color: '#FFFFFF' },
+    loaderColor: '#FFFFFF',
   },
   success: {
     container: {
-      backgroundColor: palette.accent,
-      borderColor: palette.accent,
+      backgroundColor: palette.primarySoft,
+      borderColor: '#BBF7D0',
       borderWidth: 1,
     },
     text: { color: palette.primaryDark },
@@ -307,68 +316,56 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: 110,
   },
-  headerCard: {
-    backgroundColor: palette.primaryDark,
-    borderRadius: radius.xl,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl,
-    overflow: 'hidden',
-    ...shadows.md,
+
+  // ── Page header (clean text, no card) ───────────────────────────────────────
+  headerWrap: {
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
   },
-  headerCompact: {
-    borderRadius: radius.lg,
-    paddingVertical: spacing.lg,
+  headerWrapCompact: {
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.lg,
   },
-  headerOrbTop: {
-    position: 'absolute',
-    top: -32,
-    right: -18,
-    width: 128,
-    height: 128,
-    borderRadius: 64,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-  },
-  headerOrbBottom: {
-    position: 'absolute',
-    bottom: -48,
-    left: -14,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(52,211,153,0.20)',
-  },
-  headerContent: {
+  headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
+    justifyContent: 'space-between',
     gap: spacing.md,
   },
   headerTextWrap: {
     flex: 1,
   },
   headerEyebrow: {
-    color: '#BBF7D0',
-    fontSize: 12,
-    fontWeight: '700',
+    color: palette.primary,
+    fontSize: 11,
+    fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginBottom: spacing.xs,
+    letterSpacing: 1,
+    marginBottom: 4,
   },
   headerTitle: {
-    color: palette.surface,
-    fontSize: 28,
-    fontWeight: '800',
-    lineHeight: 33,
+    color: palette.text,
+    fontSize: 24,
+    fontWeight: '700',
+    lineHeight: 30,
+    letterSpacing: -0.4,
+  },
+  headerTitleCompact: {
+    fontSize: 20,
+    lineHeight: 26,
   },
   headerSubtitle: {
-    color: 'rgba(244, 248, 243, 0.82)',
+    color: palette.textMuted,
     fontSize: 14,
-    lineHeight: 21,
-    marginTop: spacing.sm,
+    lineHeight: 22,
+    marginTop: 6,
+    fontWeight: '400',
   },
   headerTrailing: {
-    marginTop: spacing.xs,
+    marginTop: 2,
   },
+
+  // ── Card ────────────────────────────────────────────────────────────────────
   card: {
     backgroundColor: palette.surface,
     borderRadius: radius.lg,
@@ -377,6 +374,8 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     ...shadows.sm,
   },
+
+  // ── Section heading ─────────────────────────────────────────────────────────
   sectionHeading: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -389,40 +388,49 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: palette.text,
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
   sectionCaption: {
     color: palette.textMuted,
-    fontSize: 13,
-    marginTop: spacing.xs,
+    fontSize: 12,
+    marginTop: 3,
+    fontWeight: '400',
   },
+
+  // ── Badge ───────────────────────────────────────────────────────────────────
   badge: {
     alignSelf: 'flex-start',
     borderRadius: radius.pill,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
+
+  // ── Button ──────────────────────────────────────────────────────────────────
   buttonBase: {
-    minHeight: 54,
+    minHeight: 44,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
-    ...shadows.sm,
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.5,
   },
   buttonText: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
+
+  // ── Field ───────────────────────────────────────────────────────────────────
   fieldGroup: {
     marginBottom: spacing.md,
   },
@@ -435,37 +443,41 @@ const styles = StyleSheet.create({
   fieldLabel: {
     color: palette.text,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '500',
   },
   fieldHint: {
     color: palette.textSoft,
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '400',
   },
+
+  // ── Input ───────────────────────────────────────────────────────────────────
   input: {
-    minHeight: 54,
+    minHeight: 44,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: palette.border,
-    backgroundColor: palette.surfaceMuted,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    backgroundColor: palette.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     color: palette.text,
     fontSize: 15,
   },
   inputMultiline: {
-    minHeight: 110,
+    minHeight: 100,
     textAlignVertical: 'top',
   },
+
+  // ── Empty state ─────────────────────────────────────────────────────────────
   emptyWrap: {
     alignItems: 'center',
-    paddingVertical: 56,
+    paddingVertical: 48,
     paddingHorizontal: spacing.xl,
   },
   emptyTitle: {
     color: palette.text,
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     textAlign: 'center',
   },
   emptySubtitle: {
@@ -476,3 +488,5 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
 });
+
+

@@ -100,9 +100,7 @@ function UserSheet({
 
 export default function UsersScreen() {
   const { user: authUser } = useAuth();
-  const canWrite = Array.isArray(authUser?.roles)
-    ? authUser.roles.includes('admin')
-    : authUser?.role === 'admin';
+  const canWrite = authUser?.roles?.includes('admin') ?? false;
 
   const { users, loading, refreshing, fetchUsers, refresh, addUser, editUser, removeUser } = useUsers();
 

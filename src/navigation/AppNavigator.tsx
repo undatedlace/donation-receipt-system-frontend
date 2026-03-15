@@ -45,7 +45,7 @@ function HistoryIcon({ color }: { color: string }) {
           style={[
             styles.historyLine,
             HISTORY_LINE_STYLES[index],
-            styles[`historyLineOffset${index}` as keyof typeof styles],
+            HISTORY_LINE_OFFSETS[index],
             { backgroundColor: color },
           ]}
         />
@@ -113,11 +113,7 @@ const createTabBarIcon =
 
 function MainTabs() {
   const { user } = useAuth();
-  const roles: string[] = Array.isArray(user?.roles)
-    ? user.roles
-    : user?.role
-    ? [user.role]
-    : ['user'];
+  const roles: string[] = Array.isArray(user?.roles) ? user.roles : ['user'];
 
   const isAdmin         = roles.includes('admin');
   const isInternalAdmin = roles.includes('internal-admin');
@@ -223,7 +219,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 10,
     paddingHorizontal: 8,
-    ...shadows.lg,
+    ...shadows.md,
   },
   tabBarItem: {
     borderRadius: radius.md,
@@ -379,6 +375,7 @@ const styles = StyleSheet.create({
 });
 
 const HISTORY_LINE_STYLES = [styles.historyLineWide, styles.historyLineWide, styles.historyLineShort];
+const HISTORY_LINE_OFFSETS = [styles.historyLineOffset0, styles.historyLineOffset1, styles.historyLineOffset2];
 const SETTINGS_TRACK_STYLES = [
   styles.settingsTrackOffset0,
   styles.settingsTrackOffset1,

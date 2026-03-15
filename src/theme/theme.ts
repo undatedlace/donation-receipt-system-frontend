@@ -2,55 +2,60 @@ import type { Theme } from '@react-navigation/native';
 import { Dimensions, PixelRatio, Platform } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BASE_WIDTH = 390; // iPhone 14 / Pixel 7 baseline
 
 /** Scale a font size proportionally to the device screen width. */
 export const fs = (size: number): number => {
-  const scaled = size * (SCREEN_WIDTH / BASE_WIDTH);
+  const scaled = size * (SCREEN_WIDTH / 390);
   return Math.round(PixelRatio.roundToNearestPixel(scaled));
 };
 
 export const palette = {
-  background: '#F4F8F3',
-  surface: '#FFFFFF',
-  surfaceMuted: '#F7FBF7',
-  surfaceStrong: '#ECF5ED',
-  border: '#D7E4D8',
-  borderStrong: '#C1D4C3',
-  text: '#142018',
-  textMuted: '#5E7064',
-  textSoft: '#859387',
-  primary: '#1F7A45',
-  primaryDark: '#14532D',
-  primarySoft: '#E8F5EC',
-  primarySurface: '#F1FAF3',
-  accent: '#34D399',
-  accentSoft: '#D1FAE5',
-  warning: '#D97706',
-  warningSoft: '#FEF3C7',
-  info: '#0F766E',
-  infoSoft: '#CCFBF1',
-  danger: '#DC2626',
-  dangerSoft: '#FEE2E2',
-  shadow: '#102116',
-  overlay: 'rgba(16, 33, 22, 0.28)',
+  // ── Neutrals (zinc) ── clean, non-tinted
+  background:     '#FAFAFA',
+  surface:        '#FFFFFF',
+  surfaceMuted:   '#F4F4F5',
+  surfaceStrong:  '#E4E4E7',
+  border:         '#E4E4E7',
+  borderStrong:   '#D4D4D8',
+  text:           '#18181B',
+  textMuted:      '#71717A',
+  textSoft:       '#A1A1AA',
+
+  // ── Green brand ──
+  primary:        '#085524',
+  primaryDark:    '#15803D',
+  primarySoft:    '#F0FDF4',
+  primarySurface: '#DCFCE7',
+  accent:         '#22C55E',
+  accentSoft:     '#BBF7D0',
+
+  // ── Semantic ──
+  warning:        '#D97706',
+  warningSoft:    '#FFFBEB',
+  info:           '#0F766E',
+  infoSoft:       '#F0FDFA',
+  danger:         '#DC2626',
+  dangerSoft:     '#FEF2F2',
+
+  shadow:         '#000000',
+  overlay:        'rgba(0, 0, 0, 0.45)',
 };
 
 export const radius = {
-  sm: 12,
-  md: 18,
-  lg: 24,
-  xl: 32,
-  pill: 999,
+  sm:   6,
+  md:   8,
+  lg:   10,
+  xl:   14,
+  pill: 9999,
 };
 
 export const spacing = {
-  xs: 6,
-  sm: 10,
-  md: 14,
-  lg: 18,
-  xl: 24,
-  xxl: 32,
+  xs:     6,
+  sm:     10,
+  md:     14,
+  lg:     18,
+  xl:     24,
+  xxl:    32,
   screen: 20,
 };
 
@@ -61,32 +66,25 @@ const iosShadow = (opacity: number, radiusValue: number, height: number) => ({
   shadowOffset: { width: 0, height },
 });
 
-export const shadows = {
-  sm: Platform.select({
-    ios: iosShadow(0.06, 10, 4),
-    android: { elevation: 2 },
-    default: {},
-  }),
-  md: Platform.select({
-    ios: iosShadow(0.08, 16, 8),
-    android: { elevation: 4 },
-    default: {},
-  }),
-  lg: Platform.select({
-    ios: iosShadow(0.12, 24, 14),
-    android: { elevation: 7 },
-    default: {},
-  }),
+type ShadowStyle = { elevation?: number; shadowColor?: string; shadowOpacity?: number; shadowRadius?: number; shadowOffset?: { width: number; height: number } };
+
+const shadow = (ios: ShadowStyle, android: ShadowStyle): ShadowStyle =>
+  Platform.OS === 'android' ? android : ios;
+
+export const shadows: Record<'sm' | 'md' | 'lg', ShadowStyle> = {
+  sm: shadow(iosShadow(0.04, 3, 1),  { elevation: 1 }),
+  md: shadow(iosShadow(0.06, 6, 2),  { elevation: 2 }),
+  lg: shadow(iosShadow(0.08, 10, 4), { elevation: 4 }),
 };
 
 export const navigationTheme: Theme = {
   dark: false,
   colors: {
-    primary: palette.primary,
-    background: palette.background,
-    card: palette.surface,
-    text: palette.text,
-    border: palette.border,
+    primary:      palette.primary,
+    background:   palette.background,
+    card:         palette.surface,
+    text:         palette.text,
+    border:       palette.border,
     notification: palette.accent,
   },
   fonts: {

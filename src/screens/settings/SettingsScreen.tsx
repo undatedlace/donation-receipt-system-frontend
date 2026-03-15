@@ -20,8 +20,7 @@ export default function SettingsScreen() {
     ]);
   };
 
-  const fallbackName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
-  const fullName = user?.name ?? (fallbackName || 'User account');
+  const fullName = user?.name ?? 'User account';
 
   return (
     <PageScroll>
@@ -30,7 +29,7 @@ export default function SettingsScreen() {
         <Text style={styles.profileName}>{fullName}</Text>
         <Text style={styles.profileEmail}>{user?.email}</Text>
         <View style={styles.roleRow}>
-          {(Array.isArray(user?.roles) ? user.roles : [user?.role ?? 'user']).map((role: string) => (
+          {(user?.roles ?? ['user']).map((role: string) => (
             <Badge key={role} label={role} tone="success" style={styles.roleBadge} />
           ))}
         </View>
