@@ -19,7 +19,7 @@ import {
   PageHeader,
   SurfaceCard,
 } from '../../components/ui/primitives';
-import { deleteDonation, getDonations } from '../../services/api';
+import { useDonations } from '../../hooks/useDonations';
 import { palette, radius, spacing } from '../../theme/theme';
 
 const TYPES = ['All', 'Zakat', 'Fitra', 'Atiyaat', 'Noori Box'];
@@ -34,75 +34,47 @@ const typeTones: Record<string, 'primary' | 'warning' | 'info' | 'success' | 'de
 const formatCurrency = (value: number) => `₹${Number(value).toLocaleString('en-IN')}`;
 
 export default function HistoryScreen({ navigation }: any) {
-  const [donations, setDonations] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const {
+    donations,
+    loading,
+    loadingMore,
+    refreshing,
+    page,
+    totalPages,
+    fetchDonations,
+    loadMore,
+    removeDonation,
+  } = useDonations();
   const [search, setSearch] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
   const [filter, setFilter] = useState('All');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
 
-  const fetchDonations = useCallback(
-    async ({
-      pageToLoad = 1,
-      reset = false,
-    }: {
-      pageToLoad?: number;
-      reset?: boolean;
-    } = {}) => {
-      if (!reset && pageToLoad > 1) {
-        setLoadingMore(true);
-      }
-
-      try {
-        const params: any = { page: pageToLoad, limit: 20 };
-        if (appliedSearch) {
-          params.search = appliedSearch;
-        }
-        if (filter !== 'All') {
-          params.donationType = filter;
-        }
-
-        const { data } = await getDonations(params);
-        const nextItems = Array.isArray(data?.data) ? data.data : [];
-
-        setDonations(previous => (reset ? nextItems : [...previous, ...nextItems]));
-        setPage(pageToLoad);
-        setTotalPages(data?.pages || 1);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
-        setLoadingMore(false);
-      }
-    },
+  const buildFilter = useCallback(
+    () => ({
+      page: 1,
+      ...(appliedSearch ? { search: appliedSearch } : {}),
+      ...(filter !== 'All' ? { donationType: filter } : {}),
+    }),
     [appliedSearch, filter],
   );
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      fetchDonations({ reset: true, pageToLoad: 1 });
-    }, [fetchDonations]),
+      fetchDonations(buildFilter(), true);
+    }, [fetchDonations, buildFilter]),
   );
 
   const onSearch = () => {
     const nextSearch = search.trim();
-    setLoading(true);
-
-    if (nextSearch === appliedSearch) {
-      fetchDonations({ reset: true, pageToLoad: 1 });
-    } else {
+    if (nextSearch !== appliedSearch) {
       setAppliedSearch(nextSearch);
+    } else {
+      fetchDonations(buildFilter(), true);
     }
   };
 
   const onRefresh = () => {
-    setRefreshing(true);
-    fetchDonations({ reset: true, pageToLoad: 1 });
+    fetchDonations({ ...buildFilter(), page: 1 }, true);
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -113,8 +85,7 @@ export default function HistoryScreen({ navigation }: any) {
         style: 'destructive',
         onPress: async () => {
           try {
-            await deleteDonation(id);
-            setDonations(previous => previous.filter(item => item._id !== id));
+            await removeDonation(id);
           } catch (error: any) {
             Alert.alert('Error', error?.response?.data?.message || 'Failed to delete donation');
           }
@@ -236,9 +207,7 @@ export default function HistoryScreen({ navigation }: any) {
         }
         contentContainerStyle={styles.listContent}
         onEndReached={() => {
-          if (!loadingMore && page < totalPages) {
-            fetchDonations({ pageToLoad: page + 1 });
-          }
+          loadMore(buildFilter());
         }}
         onEndReachedThreshold={0.35}
         showsVerticalScrollIndicator={false}

@@ -1,11 +1,13 @@
 export interface AuthUser {
-  userId: string;
+  id: string;
+  name: string;
   email: string;
   roles: string[];
 }
 
-export interface LoginResponse {
-  access_token: string;
+/** Shape returned by POST /auth/login and POST /auth/register */
+export interface AuthResponse {
+  token: string;
   user: AuthUser;
 }
 

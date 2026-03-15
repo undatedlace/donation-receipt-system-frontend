@@ -22,7 +22,7 @@ import {
   SectionHeading,
   SurfaceCard,
 } from '../../components/ui/primitives';
-import { createUser, deleteUser, getUsers, updateUser } from '../../services/api';
+import { useUsers } from '../../hooks/useUsers';
 import { palette, radius, spacing } from '../../theme/theme';
 
 const ROLES = ['admin', 'user', 'internal-admin'];
@@ -99,9 +99,7 @@ function UserSheet({
 }
 
 export default function UsersScreen() {
-  const [users, setUsers] = useState<UserItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { users, loading, refreshing, fetchUsers, refresh, addUser, editUser, removeUser } = useUsers();
 
   const [addVisible, setAddVisible] = useState(false);
   const [addForm, setAddForm] = useState({ ...emptyAdd });
@@ -114,26 +112,10 @@ export default function UsersScreen() {
   const [editRoles, setEditRoles] = useState<string[]>([]);
   const [editLoading, setEditLoading] = useState(false);
 
-  const fetchUsers = async () => {
-    try {
-      const { data } = await getUsers();
-      setUsers(Array.isArray(data) ? data : data?.data ?? []);
-    } catch (error: any) {
-      Alert.alert(
-        'Error',
-        error?.response?.data?.message ??
-          (error?.message ? `Network error: ${error.message}` : 'Failed to load users'),
-      );
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
   useFocusEffect(
     useCallback(() => {
       fetchUsers();
-    }, []),
+    }, [fetchUsers]),
   );
 
   const handleAdd = async () => {
@@ -150,10 +132,9 @@ export default function UsersScreen() {
     setAddLoading(true);
 
     try {
-      await createUser({ firstName, lastName, email, password, roles });
+      await addUser({ firstName, lastName, email, password, roles });
       setAddVisible(false);
       setAddForm({ ...emptyAdd });
-      fetchUsers();
     } catch (error: any) {
       Alert.alert('Error', error?.response?.data?.message ?? 'Failed to create user');
     } finally {
@@ -181,13 +162,12 @@ export default function UsersScreen() {
     setEditLoading(true);
 
     try {
-      await updateUser(editTarget._id, {
+      await editUser(editTarget._id, {
         firstName: editFirst.trim(),
         lastName: editLast.trim(),
         roles: editRoles,
       });
       setEditVisible(false);
-      fetchUsers();
     } catch (error: any) {
       Alert.alert('Error', error?.response?.data?.message ?? 'Failed to update user');
     } finally {
@@ -206,8 +186,7 @@ export default function UsersScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteUser(user._id);
-              setUsers(previous => previous.filter(item => item._id !== user._id));
+              await removeUser(user._id);
             } catch (error: any) {
               Alert.alert('Error', error?.response?.data?.message ?? 'Failed to delete user');
             }
@@ -287,10 +266,7 @@ export default function UsersScreen() {
           />
         }
         contentContainerStyle={styles.listContent}
-        onRefresh={() => {
-          setRefreshing(true);
-          fetchUsers();
-        }}
+        onRefresh={() => refresh()}
         refreshing={refreshing}
         showsVerticalScrollIndicator={false}
       />

@@ -19,7 +19,7 @@ import {
   SurfaceCard,
 } from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
-import { createDonation, generateReceipt } from '../../services/api';
+import { useDonations } from '../../hooks/useDonations';
 import { palette, radius, spacing } from '../../theme/theme';
 
 const DONATION_TYPES = ['Zakat', 'Fitra', 'Atiyaat', 'Noori Box'];
@@ -90,6 +90,7 @@ function PickerField({
 
 export default function DonationFormScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { submitDonation } = useDonations();
   const today = new Date().toISOString().split('T')[0];
 
   const [form, setForm] = useState({
@@ -166,20 +167,19 @@ export default function DonationFormScreen({ navigation }: any) {
         boxNumber: form.boxNumber ? Number(form.boxNumber) : undefined,
       };
 
-      const { data: donation } = await createDonation(payload);
-      const { data: receipt } = await generateReceipt(donation._id);
+      const { donation, receiptUrl, receiptNumber } = await submitDonation(payload);
 
       Alert.alert(
         'Donation recorded',
-        `Receipt ${receipt.receiptNumber} generated successfully.`,
+        `Receipt ${receiptNumber} generated successfully.`,
         [
           {
             text: 'View receipt',
             onPress: () =>
               navigation.navigate('ReceiptPreview', {
                 donationId: donation._id,
-                receiptUrl: receipt.url,
-                receiptNumber: receipt.receiptNumber,
+                receiptUrl,
+                receiptNumber,
                 donorName: form.donorName,
                 mobileNumber: form.mobileNumber,
               }),

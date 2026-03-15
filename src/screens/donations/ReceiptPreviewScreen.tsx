@@ -16,28 +16,31 @@ import {
   PageHeader,
   SurfaceCard,
 } from '../../components/ui/primitives';
-import { generateReceipt, sendWhatsApp } from '../../services/api';
+import { generateReceipt } from '../../services/api';
+import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { palette, spacing } from '../../theme/theme';
+
+/** Wraps an S3 PDF URL in Google Docs Viewer so Android WebView can render it. */
+const toViewerUrl = (url: string) =>
+  `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
 
 export default function ReceiptPreviewScreen({ route }: any) {
   const { donationId, receiptUrl, receiptNumber, donorName, mobileNumber } = route.params || {};
-  const [sending, setSending] = useState(false);
+  const { sending, send } = useWhatsApp();
   const [sent, setSent] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [currentUrl, setCurrentUrl] = useState(receiptUrl);
+  const [viewerError, setViewerError] = useState(false);
 
   const handleSendWhatsApp = async () => {
-    setSending(true);
+    const result = await send(donationId);
 
-    try {
-      await sendWhatsApp(donationId);
+    if (result.success) {
       setSent(true);
       Alert.alert('Receipt sent', `Receipt sent to ${mobileNumber} via WhatsApp.`);
-    } catch (error: any) {
-      const message =
-        error?.response?.data?.message || 'Failed to send automatically. Open WhatsApp manually instead?';
-
-      Alert.alert('Send via WhatsApp', message, [
+    } else {
+      // Twilio failed — offer manual fallback
+      Alert.alert('Send via WhatsApp', result.error || 'Could not send automatically. Open WhatsApp manually?', [
         {
           text: 'Open WhatsApp',
           onPress: () => {
@@ -50,8 +53,6 @@ export default function ReceiptPreviewScreen({ route }: any) {
         },
         { text: 'Cancel', style: 'cancel' },
       ]);
-    } finally {
-      setSending(false);
     }
   };
 
@@ -73,6 +74,7 @@ export default function ReceiptPreviewScreen({ route }: any) {
     try {
       const { data } = await generateReceipt(donationId);
       setCurrentUrl(data.url);
+      setViewerError(false);
       Alert.alert('Receipt regenerated', 'The preview has been refreshed with the latest receipt.');
     } catch {
       Alert.alert('Error', 'Failed to regenerate receipt');
@@ -98,18 +100,34 @@ export default function ReceiptPreviewScreen({ route }: any) {
         />
 
         <SurfaceCard style={styles.previewCard}>
-          {currentUrl ? (
+          {currentUrl && !viewerError ? (
             <WebView
-              source={{ uri: currentUrl }}
+              source={{ uri: toViewerUrl(currentUrl) }}
               style={styles.webview}
               startInLoadingState
               renderLoading={() => (
                 <View style={styles.loaderWrap}>
-                  <Text style={styles.loaderTitle}>Loading receipt preview</Text>
-                  <Text style={styles.loaderText}>This usually takes a moment.</Text>
+                  <Text style={styles.loaderTitle}>Loading receipt preview…</Text>
+                  <Text style={styles.loaderText}>Fetching from Google Docs Viewer.</Text>
                 </View>
               )}
+              onError={() => setViewerError(true)}
+              onHttpError={(e) => {
+                if (e.nativeEvent.statusCode >= 400) setViewerError(true);
+              }}
             />
+          ) : currentUrl && viewerError ? (
+            <View style={styles.loaderWrap}>
+              <Text style={styles.loaderTitle}>Preview unavailable</Text>
+              <Text style={styles.loaderText}>
+                The inline viewer couldn't load. Open the PDF directly in your browser.
+              </Text>
+              <Button
+                label="Open PDF in browser"
+                onPress={() => Linking.openURL(currentUrl)}
+                style={styles.regenButton}
+              />
+            </View>
           ) : (
             <View style={styles.emptyPreview}>
               <EmptyState

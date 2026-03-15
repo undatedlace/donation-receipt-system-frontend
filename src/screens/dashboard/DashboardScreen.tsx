@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -18,7 +18,7 @@ import {
   SurfaceCard,
 } from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
-import { getDashboardStats } from '../../services/api';
+import { useStats } from '../../hooks/useStats';
 import { palette, radius, shadows, spacing } from '../../theme/theme';
 
 const formatCurrency = (value: number) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
@@ -49,31 +49,16 @@ function MetricCard({
 
 export default function DashboardScreen({ navigation }: any) {
   const { user } = useAuth();
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const fetchStats = async () => {
-    try {
-      const { data } = await getDashboardStats();
-      setStats(data);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  const { stats, loading, refreshing, fetchStats, refresh } = useStats();
 
   useFocusEffect(
     useCallback(() => {
       fetchStats();
-    }, []),
+    }, [fetchStats]),
   );
 
   const onRefresh = () => {
-    setRefreshing(true);
-    fetchStats();
+    refresh();
   };
 
   if (loading) {

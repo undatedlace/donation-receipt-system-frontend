@@ -24,13 +24,14 @@ import { palette, spacing } from '../../theme/theme';
 
 export default function RegisterScreen({ navigation }: any) {
   const { register } = useAuth();
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!name || !email || !password) {
+    if (!firstName || !lastName || !email || !password) {
       return Alert.alert('Error', 'Please fill all fields');
     }
 
@@ -41,7 +42,7 @@ export default function RegisterScreen({ navigation }: any) {
     setLoading(true);
 
     try {
-      await register(name.trim(), email.trim(), password);
+      await register(firstName.trim(), lastName.trim(), email.trim(), password);
     } catch (error: any) {
       Alert.alert('Registration Failed', error?.response?.data?.message || 'Something went wrong');
     } finally {
@@ -69,8 +70,12 @@ export default function RegisterScreen({ navigation }: any) {
               <Text style={styles.formSubtitle}>Keep it simple: name, email, and a secure password.</Text>
             </View>
 
-            <FieldGroup label="Full Name">
-              <InputField value={name} onChangeText={setName} placeholder="Your full name" />
+            <FieldGroup label="First Name">
+              <InputField value={firstName} onChangeText={setFirstName} placeholder="First name" />
+            </FieldGroup>
+
+            <FieldGroup label="Last Name">
+              <InputField value={lastName} onChangeText={setLastName} placeholder="Last name" />
             </FieldGroup>
 
             <FieldGroup label="Email Address">

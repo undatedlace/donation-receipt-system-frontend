@@ -1,20 +1,21 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { login as apiLogin, register as apiRegister } from '../services/api';
+import type { AuthUser } from '../types/auth';
 
 interface AuthContextType {
-  user: any;
+  user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (firstName: string, lastName: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -38,8 +39,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(data.user);
   };
 
-  const register = async (name: string, email: string, password: string) => {
-    const { data } = await apiRegister(name, email, password);
+  const register = async (firstName: string, lastName: string, email: string, password: string) => {
+    const { data } = await apiRegister(firstName, lastName, email, password);
     await AsyncStorage.setItem('token', data.token);
     await AsyncStorage.setItem('user', JSON.stringify(data.user));
     setToken(data.token);

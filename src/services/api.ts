@@ -1,10 +1,8 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../config/env';
 
-// ✅ Replace with your Railway URL after deployment
-// export const BASE_URL = 'http://localhost:3001/api'; // iOS simulator
-export const BASE_URL = 'http://10.0.2.2:3001/api'; // Android emulator
-// For physical device: export const BASE_URL = 'http://YOUR_PC_LOCAL_IP:3001/api';
+export const BASE_URL = API_BASE_URL;
 
 const api = axios.create({ baseURL: BASE_URL });
 
@@ -19,8 +17,13 @@ api.interceptors.request.use(async (config) => {
 export const login = (email: string, password: string) =>
   api.post('/auth/login', { email, password });
 
-export const register = (name: string, email: string, password: string) =>
-  api.post('/auth/register', { name, email, password });
+export const register = (
+  firstName: string,
+  lastName: string,
+  email: string,
+  password: string,
+  roles?: string[],
+) => api.post('/auth/register', { firstName, lastName, email, password, roles });
 
 export const getMe = () => api.get('/auth/me');
 
@@ -34,8 +37,9 @@ export const deleteDonation = (id: string) => api.delete(`/donations/${id}`);
 export const generateReceipt = (donationId: string) =>
   api.post(`/receipts/generate/${donationId}`);
 
+/** Returns the backend redirect URL for a receipt PDF stored on S3. */
 export const getReceiptDownloadUrl = (receiptNumber: string) =>
-  `${BASE_URL.replace('/api', '')}/receipts/${receiptNumber}.pdf`;
+  `${BASE_URL}/receipts/download/${receiptNumber}`;
 
 // ─── WhatsApp ──────────────────────────────────────────────────────────
 export const getWhatsAppStatus = () => api.get('/whatsapp/status');
