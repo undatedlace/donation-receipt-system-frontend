@@ -23,7 +23,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { fs, palette, spacing } from '../../theme/theme';
 
 const toViewerUrl = (url: string) =>
-  `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+  `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
 
 export default function ReceiptPreviewScreen({ navigation, route }: any) {
   const { donationId, receiptUrl: paramReceiptUrl, receiptNumber: paramReceiptNumber, donorName: paramDonorName, mobileNumber: paramMobileNumber, qrImageUrl: paramQrImageUrl } = route.params || {};
@@ -35,6 +35,7 @@ export default function ReceiptPreviewScreen({ navigation, route }: any) {
   const [regenerating, setRegenerating] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [viewerError, setViewerError] = useState(false);
+  const [webviewKey, setWebviewKey] = useState(0);
 
   // Donation fields — initialised from route params, then overwritten by API fetch
   const [receiptUrl, setReceiptUrl] = useState<string | undefined>(paramReceiptUrl);
@@ -100,12 +101,18 @@ export default function ReceiptPreviewScreen({ navigation, route }: any) {
     }
   };
 
+  const retryViewer = () => {
+    setViewerError(false);
+    setWebviewKey(k => k + 1);
+  };
+
   const handleRegenerate = async () => {
     setRegenerating(true);
     try {
       const { data } = await generateReceipt(donationId);
       setReceiptUrl(data.url);
       setViewerError(false);
+      setWebviewKey(k => k + 1);
     } catch {
       Alert.alert('Error', 'Failed to regenerate receipt');
     } finally {
@@ -167,8 +174,11 @@ export default function ReceiptPreviewScreen({ navigation, route }: any) {
             {receiptUrl && !viewerError ? (
               <View style={styles.webviewWrap}>
                 <WebView
+                  key={webviewKey}
                   source={{ uri: toViewerUrl(receiptUrl) }}
                   style={styles.webview}
+                  javaScriptEnabled
+                  domStorageEnabled
                   startInLoadingState
                   renderLoading={() => (
                     <View style={styles.webviewLoader}>
@@ -182,8 +192,9 @@ export default function ReceiptPreviewScreen({ navigation, route }: any) {
               </View>
             ) : receiptUrl && viewerError ? (
               <View style={styles.fallbackWrap}>
-                <Text style={styles.fallbackText}>Inline preview unavailable. Open the PDF directly.</Text>
-                <Button label="Open PDF" onPress={() => Linking.openURL(receiptUrl!)} style={styles.openBtn} />
+                <Text style={styles.fallbackText}>Preview failed to load. Retry or open the PDF directly.</Text>
+                <Button label="Retry Preview" onPress={retryViewer} style={styles.openBtn} />
+                <Button label="Open PDF" variant="secondary" onPress={() => Linking.openURL(receiptUrl!)} style={styles.openBtn} />
               </View>
             ) : (
               <View style={styles.fallbackWrap}>
