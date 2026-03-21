@@ -16,10 +16,11 @@ import {
   EmptyState,
   InputField,
   Page,
+  PageHeader,
   SurfaceCard,
 } from '../../components/ui/primitives';
 import { useDonations } from '../../hooks/useDonations';
-import { palette, radius, spacing } from '../../theme/theme';
+import { fs, palette, radius, shadows, spacing } from '../../theme/theme';
 
 const TYPES = ['All', 'Zakat', 'Fitra', 'Atiyaat', 'Noori Box'];
 
@@ -30,7 +31,9 @@ const typeTones: Record<string, 'primary' | 'warning' | 'info' | 'success' | 'de
   'Noori Box': 'success',
 };
 
-const formatCurrency = (value: number) => `₹${Number(value).toLocaleString('en-IN')}`;
+const formatCurrency = (value: number) => `Rs ${Number(value).toLocaleString('en-IN')}`;
+
+type ViewMode = 'list' | 'grid';
 
 export default function HistoryScreen({ navigation }: any) {
   const {
@@ -38,8 +41,6 @@ export default function HistoryScreen({ navigation }: any) {
     loading,
     loadingMore,
     refreshing,
-    page,
-    totalPages,
     fetchDonations,
     loadMore,
     removeDonation,
@@ -47,6 +48,7 @@ export default function HistoryScreen({ navigation }: any) {
   const [search, setSearch] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
   const [filter, setFilter] = useState('All');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   const buildFilter = useCallback(
     () => ({
@@ -65,11 +67,13 @@ export default function HistoryScreen({ navigation }: any) {
 
   const onSearch = () => {
     const nextSearch = search.trim();
+
     if (nextSearch !== appliedSearch) {
       setAppliedSearch(nextSearch);
-    } else {
-      fetchDonations(buildFilter(), true);
+      return;
     }
+
+    fetchDonations(buildFilter(), true);
   };
 
   const onRefresh = () => {
@@ -95,6 +99,28 @@ export default function HistoryScreen({ navigation }: any) {
 
   const renderHeader = () => (
     <View style={styles.headerWrap}>
+      <View style={styles.filterRow}>
+        <FlatList
+          horizontal
+          data={TYPES}
+          keyExtractor={item => item}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContent}
+          renderItem={({ item }) => {
+            const active = item === filter;
+
+            return (
+              <TouchableOpacity
+                activeOpacity={0.88}
+                style={[styles.filterChip, active ? styles.filterChipActive : null]}
+                onPress={() => setFilter(item)}>
+                <Text style={[styles.filterText, active ? styles.filterTextActive : null]}>{item}</Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+
       <SurfaceCard style={styles.searchCard}>
         <InputField
           value={search}
@@ -106,67 +132,81 @@ export default function HistoryScreen({ navigation }: any) {
         <Button label="Search" onPress={onSearch} style={styles.searchButton} />
       </SurfaceCard>
 
-      <View style={styles.filterRow}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={TYPES}
-          keyExtractor={item => item}
-          contentContainerStyle={styles.filterContent}
-          renderItem={({ item }) => {
-            const active = item === filter;
-            return (
-              <TouchableOpacity
-                activeOpacity={0.88}
-                style={[styles.filterChip, active && styles.filterChipActive]}
-                onPress={() => setFilter(item)}>
-                <Text style={[styles.filterText, active && styles.filterTextActive]}>{item}</Text>
-              </TouchableOpacity>
-            );
-          }}
-        />
+      <View style={styles.viewRow}>
+        <Text style={styles.viewLabel}>View</Text>
+        <View style={styles.viewToggle}>
+          <TouchableOpacity
+            activeOpacity={0.88}
+            style={[styles.viewButton, viewMode === 'list' ? styles.viewButtonActive : null]}
+            onPress={() => setViewMode('list')}>
+            <Text style={[styles.viewButtonText, viewMode === 'list' ? styles.viewButtonTextActive : null]}>
+              Card
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.88}
+            style={[styles.viewButton, viewMode === 'grid' ? styles.viewButtonActive : null]}
+            onPress={() => setViewMode('grid')}>
+            <Text style={[styles.viewButtonText, viewMode === 'grid' ? styles.viewButtonTextActive : null]}>
+              Grid
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 
-  const renderItem = ({ item }: any) => (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      style={styles.card}
-      onPress={() =>
-        navigation.navigate('ReceiptPreview', {
-          donationId: item._id,
-          receiptUrl: item.receiptUrl,
-          receiptNumber: item.receiptNumber,
-          donorName: item.donorName,
-          mobileNumber: item.mobileNumber,
-        })
-      }
-      onLongPress={() => handleDelete(item._id, item.donorName)}>
-      <View style={styles.cardTop}>
-        <Badge label={item.donationType} tone={typeTones[item.donationType] || 'default'} />
-        <Text style={styles.amount}>{formatCurrency(item.amount)}</Text>
-      </View>
+  const renderItem = ({ item, index }: any) => {
+    const isGrid = viewMode === 'grid';
 
-      <Text style={styles.donorName}>{item.donorName}</Text>
-      <Text style={styles.cardMeta}>
-        {item.receiptNumber} • {new Date(item.date).toLocaleDateString('en-GB')}
-      </Text>
-      <Text style={styles.cardMeta}>
-        {item.mode}
-        {item.mobileNumber ? ` • ${item.mobileNumber}` : ''}
-      </Text>
-
-      <View style={styles.cardBottom}>
-        <Text style={styles.openText}>Open receipt</Text>
-        <Badge label={item.whatsappSent ? 'WhatsApp sent' : 'Pending'} tone={item.whatsappSent ? 'success' : 'warning'} />
-      </View>
-    </TouchableOpacity>
-  );
-
-  if (loading) {
     return (
-      <Page>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={[styles.card, isGrid ? styles.gridCard : null]}
+        onPress={() =>
+          navigation.navigate('ReceiptPreview', {
+            donationId: item._id,
+            receiptUrl: item.receiptUrl,
+            receiptNumber: item.receiptNumber,
+            donorName: item.donorName,
+            mobileNumber: item.mobileNumber,
+            qrImageUrl: item.qrImageUrl,
+          })
+        }
+        onLongPress={() => handleDelete(item._id, item.donorName)}>
+        <View style={styles.cardTop}>
+          <View style={[styles.cardIndex, isGrid ? styles.cardIndexGrid : null]}>
+            <Text style={[styles.cardIndexText, isGrid ? styles.cardIndexTextGrid : null]}>{index + 1}</Text>
+          </View>
+
+          <View style={styles.cardMain}>
+            <Text style={[styles.donorName, isGrid ? styles.donorNameGrid : null]} numberOfLines={2}>
+              {item.donorName}
+            </Text>
+            <Text style={styles.amount}>{formatCurrency(item.amount)}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.cardMeta}>{item.receiptNumber}</Text>
+        <Text style={styles.cardMeta}>
+          {new Date(item.date).toLocaleDateString('en-GB')} • {item.mode}
+        </Text>
+        {item.mobileNumber ? <Text style={styles.cardMeta}>{item.mobileNumber}</Text> : null}
+
+        <View style={styles.cardBottom}>
+          <Badge label={item.donationType} tone={typeTones[item.donationType] || 'default'} />
+          <Badge
+            label={item.whatsappSent ? 'Sent' : 'Pending'}
+            tone={item.whatsappSent ? 'success' : 'warning'}
+          />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  if (loading && !donations.length) {
+    return (
+      <Page header={<PageHeader title="Donation History" subtitle="Loading receipts" compact />}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={palette.primary} />
         </View>
@@ -175,11 +215,21 @@ export default function HistoryScreen({ navigation }: any) {
   }
 
   return (
-    <Page>
+    <Page
+      header={
+        <PageHeader
+          title="Donation History"
+          subtitle="Review, search, and reopen receipts."
+          trailing={<Badge label={`${donations.length} shown`} tone="success" />}
+        />
+      }>
       <FlatList
+        key={viewMode}
         data={donations}
         keyExtractor={item => item._id}
         renderItem={renderItem}
+        numColumns={viewMode === 'grid' ? 2 : 1}
+        columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={
           <EmptyState
@@ -198,9 +248,7 @@ export default function HistoryScreen({ navigation }: any) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.primary]} />
         }
         contentContainerStyle={styles.listContent}
-        onEndReached={() => {
-          loadMore(buildFilter());
-        }}
+        onEndReached={() => loadMore(buildFilter())}
         onEndReachedThreshold={0.35}
         showsVerticalScrollIndicator={false}
       />
@@ -220,23 +268,16 @@ const styles = StyleSheet.create({
     paddingBottom: 126,
   },
   headerWrap: {
-    marginBottom: spacing.lg,
-  },
-  searchCard: {
-    marginTop: spacing.lg,
-    gap: spacing.sm,
-  },
-  searchButton: {
-    minHeight: 48,
+    marginBottom: spacing.md,
   },
   filterRow: {
-    marginTop: spacing.md,
+    marginBottom: spacing.md,
   },
   filterContent: {
     paddingRight: spacing.md,
   },
   filterChip: {
-    height: 40,
+    minHeight: 38,
     paddingHorizontal: 16,
     borderRadius: radius.pill,
     borderWidth: 1,
@@ -247,58 +288,133 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   filterChipActive: {
-    backgroundColor: palette.primaryDark,
-    borderColor: palette.primaryDark,
+    backgroundColor: palette.primary,
+    borderColor: palette.primary,
   },
   filterText: {
     color: palette.textMuted,
-    fontSize: 13,
+    fontSize: fs(12),
     fontWeight: '700',
   },
   filterTextActive: {
-    color: palette.surface,
+    color: '#FFFFFF',
+  },
+  viewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+  },
+  viewLabel: {
+    color: palette.text,
+    fontSize: fs(12),
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  viewButton: {
+    minWidth: 72,
+    minHeight: 36,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewButtonActive: {
+    backgroundColor: palette.primarySoft,
+    borderColor: palette.accentSoft,
+  },
+  viewButtonText: {
+    color: palette.textMuted,
+    fontSize: fs(12),
+    fontWeight: '700',
+  },
+  viewButtonTextActive: {
+    color: palette.primaryDark,
+  },
+  searchCard: {
+    gap: spacing.sm,
+  },
+  searchButton: {
+    minHeight: 44,
+  },
+  gridRow: {
+    justifyContent: 'space-between',
   },
   card: {
     backgroundColor: palette.surface,
     borderWidth: 1,
     borderColor: palette.border,
     borderRadius: radius.lg,
-    padding: spacing.lg,
+    padding: spacing.md,
     marginBottom: spacing.md,
+    ...shadows.sm,
+  },
+  gridCard: {
+    width: '48%',
+    minHeight: 176,
   },
   cardTop: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
+    alignItems: 'flex-start',
+    gap: spacing.sm,
   },
-  amount: {
+  cardIndex: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: palette.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardIndexGrid: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  cardIndexText: {
     color: palette.primaryDark,
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: fs(15),
+    fontWeight: '700',
+  },
+  cardIndexTextGrid: {
+    fontSize: fs(13),
+  },
+  cardMain: {
+    flex: 1,
+    gap: 2,
   },
   donorName: {
     color: palette.text,
-    fontSize: 16,
-    fontWeight: '800',
-    marginTop: spacing.md,
+    fontSize: fs(15),
+    fontWeight: '700',
+  },
+  donorNameGrid: {
+    fontSize: fs(14),
+  },
+  amount: {
+    color: palette.primaryDark,
+    fontSize: fs(14),
+    fontWeight: '700',
   },
   cardMeta: {
     color: palette.textMuted,
-    fontSize: 13,
+    fontSize: fs(11),
     marginTop: spacing.xs,
   },
   cardBottom: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    marginTop: spacing.lg,
-  },
-  openText: {
-    color: palette.primary,
-    fontSize: 13,
-    fontWeight: '700',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
   footerLoader: {
     paddingVertical: spacing.lg,

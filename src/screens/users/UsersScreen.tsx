@@ -18,12 +18,13 @@ import {
   FieldGroup,
   InputField,
   Page,
+  PageHeader,
   SectionHeading,
   SurfaceCard,
 } from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
 import { useUsers } from '../../hooks/useUsers';
-import { fs, palette, radius, spacing } from '../../theme/theme';
+import { fs, palette, radius, shadows, spacing } from '../../theme/theme';
 
 const ROLES = ['admin', 'user', 'internal-admin'];
 const ROLE_TONES: Record<string, 'danger' | 'primary' | 'info'> = {
@@ -56,13 +57,14 @@ function RoleSelector({
     <View style={styles.rolesRow}>
       {ROLES.map(role => {
         const active = selected.includes(role);
+
         return (
           <TouchableOpacity
             key={role}
             activeOpacity={0.88}
-            style={[styles.roleChip, active && styles.roleChipActive]}
+            style={[styles.roleChip, active ? styles.roleChipActive : null]}
             onPress={() => toggle(role)}>
-            <Text style={[styles.roleChipText, active && styles.roleChipTextActive]}>{role}</Text>
+            <Text style={[styles.roleChipText, active ? styles.roleChipTextActive : null]}>{role}</Text>
           </TouchableOpacity>
         );
       })}
@@ -101,7 +103,6 @@ function UserSheet({
 export default function UsersScreen() {
   const { user: authUser } = useAuth();
   const canWrite = authUser?.roles?.includes('admin') ?? false;
-
   const { users, loading, refreshing, fetchUsers, refresh, addUser, editUser, removeUser } = useUsers();
 
   const [addVisible, setAddVisible] = useState(false);
@@ -201,10 +202,33 @@ export default function UsersScreen() {
 
   const renderHeader = () => (
     <View style={styles.headerWrap}>
+      <SurfaceCard style={styles.heroCard}>
+        <Text style={styles.heroEyebrow}>Access Control</Text>
+        <Text style={styles.heroTitle}>Team Members</Text>
+        <Text style={styles.heroText}>
+          Manage who can record donations, review receipts, and control internal operations.
+        </Text>
+
+        <View style={styles.heroStats}>
+          <View style={styles.heroStat}>
+            <Text style={styles.heroStatLabel}>Members</Text>
+            <Text style={styles.heroStatValue}>{users.length}</Text>
+          </View>
+          <View style={styles.heroStatDivider} />
+          <View style={styles.heroStat}>
+            <Text style={styles.heroStatLabel}>Admin Access</Text>
+            <Text style={styles.heroStatValue}>{canWrite ? 'Enabled' : 'View Only'}</Text>
+          </View>
+        </View>
+      </SurfaceCard>
 
       <SurfaceCard style={styles.toolbarCard}>
-        <SectionHeading title="Team members" caption="Role-based access control" />
-        {canWrite && <Button label="Add user" onPress={() => setAddVisible(true)} />}
+        <SectionHeading
+          title="Directory"
+          caption="Role-based access across the donation workflow"
+          action={canWrite ? <Badge label="Editable" tone="success" /> : <Badge label="Read only" />}
+        />
+        {canWrite ? <Button label="Add User" onPress={() => setAddVisible(true)} /> : null}
       </SurfaceCard>
     </View>
   );
@@ -231,21 +255,19 @@ export default function UsersScreen() {
           </View>
         </View>
 
-        <View style={styles.actionsColumn}>
-          {canWrite && (
+        {canWrite ? (
+          <View style={styles.actionsColumn}>
             <Button label="Edit" variant="secondary" onPress={() => openEdit(item)} style={styles.inlineButton} />
-          )}
-          {canWrite && (
-            <Button label="Delete" variant="ghost" onPress={() => handleDelete(item)} style={styles.inlineButton} />
-          )}
-        </View>
+            <Button label="Delete" variant="danger" onPress={() => handleDelete(item)} style={styles.inlineButton} />
+          </View>
+        ) : null}
       </SurfaceCard>
     );
   };
 
-  if (loading) {
+  if (loading && !users.length) {
     return (
-      <Page>
+      <Page header={<PageHeader title="Team Access" subtitle="Loading users" compact />}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={palette.primary} />
         </View>
@@ -254,7 +276,14 @@ export default function UsersScreen() {
   }
 
   return (
-    <Page>
+    <Page
+      header={
+        <PageHeader
+          title="Team Access"
+          subtitle="Manage the people behind the receipt desk."
+          trailing={<Badge label={`${users.length} users`} tone="success" />}
+        />
+      }>
       <FlatList
         data={users}
         keyExtractor={item => item._id}
@@ -274,7 +303,7 @@ export default function UsersScreen() {
 
       <UserSheet
         visible={addVisible}
-        title="Add new user"
+        title="Add New User"
         onClose={() => {
           setAddVisible(false);
           setAddForm({ ...emptyAdd });
@@ -315,13 +344,10 @@ export default function UsersScreen() {
         </FieldGroup>
 
         <FieldGroup label="Roles">
-          <RoleSelector
-            selected={addForm.roles}
-            onChange={roles => setAddForm(form => ({ ...form, roles }))}
-          />
+          <RoleSelector selected={addForm.roles} onChange={roles => setAddForm(form => ({ ...form, roles }))} />
         </FieldGroup>
 
-        <Button label="Create user" loading={addLoading} onPress={handleAdd} style={styles.sheetButton} />
+        <Button label="Create User" loading={addLoading} onPress={handleAdd} style={styles.sheetButton} />
         <Button
           label="Cancel"
           variant="ghost"
@@ -333,7 +359,7 @@ export default function UsersScreen() {
         />
       </UserSheet>
 
-      <UserSheet visible={editVisible} title="Edit user" onClose={() => setEditVisible(false)}>
+      <UserSheet visible={editVisible} title="Edit User" onClose={() => setEditVisible(false)}>
         <FieldGroup label="First Name">
           <InputField value={editFirst} onChangeText={setEditFirst} placeholder="First name" />
         </FieldGroup>
@@ -346,7 +372,7 @@ export default function UsersScreen() {
           <RoleSelector selected={editRoles} onChange={setEditRoles} />
         </FieldGroup>
 
-        <Button label="Save changes" loading={editLoading} onPress={handleEdit} style={styles.sheetButton} />
+        <Button label="Save Changes" loading={editLoading} onPress={handleEdit} style={styles.sheetButton} />
         <Button
           label="Cancel"
           variant="ghost"
@@ -372,6 +398,62 @@ const styles = StyleSheet.create({
   headerWrap: {
     marginBottom: spacing.lg,
   },
+  heroCard: {
+    backgroundColor: palette.primary,
+    borderColor: palette.primary,
+    ...shadows.md,
+  },
+  heroEyebrow: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: fs(11),
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: fs(22),
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    marginTop: spacing.sm,
+  },
+  heroText: {
+    color: 'rgba(255,255,255,0.76)',
+    fontSize: fs(13),
+    lineHeight: 19,
+    marginTop: spacing.sm,
+  },
+  heroStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xl,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(0,0,0,0.16)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  heroStat: {
+    flex: 1,
+  },
+  heroStatDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    marginHorizontal: spacing.md,
+  },
+  heroStatLabel: {
+    color: 'rgba(255,255,255,0.68)',
+    fontSize: fs(11),
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  heroStatValue: {
+    color: '#FFFFFF',
+    fontSize: fs(16),
+    fontWeight: '700',
+    marginTop: 4,
+  },
   toolbarCard: {
     marginTop: spacing.lg,
   },
@@ -382,29 +464,29 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   avatarWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: palette.primaryDark,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: palette.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    color: palette.surface,
-    fontSize: 18,
-    fontWeight: '800',
+    color: palette.primaryDark,
+    fontSize: fs(18),
+    fontWeight: '700',
   },
   userBody: {
     flex: 1,
   },
   userName: {
     color: palette.text,
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: fs(15),
+    fontWeight: '700',
   },
   userEmail: {
     color: palette.textMuted,
-    fontSize: 13,
+    fontSize: fs(12),
     marginTop: spacing.xs,
   },
   badgesRow: {
@@ -414,8 +496,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   actionsColumn: {
-    gap: spacing.sm,
     width: 92,
+    gap: spacing.sm,
   },
   inlineButton: {
     minHeight: 40,
@@ -429,14 +511,14 @@ const styles = StyleSheet.create({
   sheet: {
     maxHeight: '88%',
     backgroundColor: palette.surface,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.screen,
   },
   sheetHandle: {
-    width: 44,
+    width: 46,
     height: 5,
-    borderRadius: 999,
+    borderRadius: radius.pill,
     backgroundColor: palette.borderStrong,
     alignSelf: 'center',
     marginTop: spacing.md,
@@ -444,8 +526,8 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     color: palette.text,
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: fs(20),
+    fontWeight: '700',
     marginBottom: spacing.lg,
   },
   sheetSpacer: {
@@ -467,16 +549,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   roleChipActive: {
-    backgroundColor: palette.primaryDark,
-    borderColor: palette.primaryDark,
+    backgroundColor: palette.primary,
+    borderColor: palette.primary,
   },
   roleChipText: {
     color: palette.textMuted,
-    fontSize: 13,
+    fontSize: fs(12),
     fontWeight: '700',
   },
   roleChipTextActive: {
-    color: palette.surface,
+    color: '#FFFFFF',
   },
   sheetButton: {
     marginTop: spacing.lg,

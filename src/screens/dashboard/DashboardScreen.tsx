@@ -12,8 +12,8 @@ import {
   Badge,
   Button,
   Page,
-  PageScroll,
   PageHeader,
+  PageScroll,
   SectionHeading,
   SurfaceCard,
 } from '../../components/ui/primitives';
@@ -21,58 +21,82 @@ import { useAuth } from '../../hooks/useAuth';
 import { useStats } from '../../hooks/useStats';
 import { fs, palette, radius, shadows, spacing } from '../../theme/theme';
 
-const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const BAR_HEIGHT = 130;
 
-const formatCurrency = (value: number) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
+const formatCurrency = (value: number) => `Rs ${Number(value || 0).toLocaleString('en-IN')}`;
+const formatAxisValue = (value: number) =>
+  value >= 1000 ? `${(value / 1000).toFixed(1)}k` : `${Math.round(value)}`;
 
-function MetricCard({
-  label,
-  value,
-  accent,
-  muted = false,
+const todayLabel = new Date().toLocaleDateString('en-IN', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+});
+
+function QuickTile({
+  title,
+  caption,
+  tag,
+  onPress,
+  emphasized = false,
 }: {
-  label: string;
-  value: string;
-  accent?: boolean;
-  muted?: boolean;
+  title: string;
+  caption: string;
+  tag: string;
+  onPress: () => void;
+  emphasized?: boolean;
 }) {
   return (
-    <SurfaceCard
-      style={[
-        styles.metricCard,
-        accent && styles.metricCardAccent,
-        muted && styles.metricCardMuted,
-      ]}>
-      <Text style={[styles.metricValue, accent && styles.metricValueAccent]}>{value}</Text>
-      <Text style={[styles.metricLabel, accent && styles.metricLabelAccent]}>{label}</Text>
-    </SurfaceCard>
+    <TouchableOpacity
+      activeOpacity={0.9}
+      style={[styles.quickTile, emphasized ? styles.quickTileAccent : null]}
+      onPress={onPress}>
+      <View style={[styles.quickTileIcon, emphasized ? styles.quickTileIconAccent : null]}>
+        <Text style={[styles.quickTileIconText, emphasized ? styles.quickTileIconTextAccent : null]}>
+          {tag}
+        </Text>
+      </View>
+      <Text style={[styles.quickTileTitle, emphasized ? styles.quickTileTitleAccent : null]} numberOfLines={2}>
+        {title}
+      </Text>
+      <Text style={[styles.quickTileCaption, emphasized ? styles.quickTileCaptionAccent : null]} numberOfLines={3}>
+        {caption}
+      </Text>
+    </TouchableOpacity>
   );
 }
 
-function MonthlyBarChart({ data }: { data: Array<{ _id: { year: number; month: number }; total: number; count: number }> }) {
+function TrendChart({
+  data,
+}: {
+  data: Array<{ _id: { year: number; month: number }; total: number; count: number }>;
+}) {
   if (!data || data.length === 0) {
-    return <Text style={styles.emptyText}>Monthly data will appear once donations are recorded.</Text>;
+    return <Text style={styles.emptyText}>Monthly trend will appear once donations are recorded.</Text>;
   }
 
-  const last6 = data.slice(-6);
-  const maxVal = Math.max(...last6.map(d => d.total), 1);
+  const items = data.slice(-6);
+  const maxValue = Math.max(...items.map(item => item.total), 1);
 
   return (
     <View style={styles.chartWrap}>
-      {last6.map((item, index) => {
-        const heightPct = item.total / maxVal;
-        const barHeight = Math.max(4, Math.round(heightPct * 100));
-        const label = MONTH_NAMES[(item._id.month - 1) % 12];
+      {items.map((item, index) => {
+        const pct = item.total / maxValue;
+        const barH = Math.max(4, Math.round(pct * BAR_HEIGHT));
+        const isLast = index === items.length - 1;
+        const label = MONTH_NAMES[(item._id.month - 1 + 12) % 12];
         return (
-          <View key={index} style={styles.chartCol}>
+          <View key={`${item._id.year}-${item._id.month}`} style={styles.chartCol}>
             <Text style={styles.chartBarValue}>
-              {item.total >= 1000 ? `${(item.total / 1000).toFixed(1)}k` : item.total}
+              {item.total >= 1000 ? `${(item.total / 1000).toFixed(1)}k` : String(item.total)}
             </Text>
             <View style={styles.chartBarTrack}>
               <View
                 style={[
                   styles.chartBar,
-                  { height: barHeight, backgroundColor: index === last6.length - 1 ? palette.primary : palette.surfaceStrong },
+                  { height: barH },
+                  isLast ? styles.chartBarActive : styles.chartBarInactive,
                 ]}
               />
             </View>
@@ -94,9 +118,9 @@ export default function DashboardScreen({ navigation }: any) {
     }, [fetchStats]),
   );
 
-  if (loading) {
+  if (loading && !stats) {
     return (
-      <Page>
+      <Page header={<PageHeader title="Noori Donation" subtitle="Loading overview" compact />}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={palette.primary} />
         </View>
@@ -104,72 +128,155 @@ export default function DashboardScreen({ navigation }: any) {
     );
   }
 
+  const recentDonation = stats?.recentDonations?.[0];
+  const roles = Array.isArray(user?.roles) ? user.roles : [];
+  const roleLabel = roles.includes('admin')
+    ? 'Admin'
+    : roles.includes('internal-admin')
+      ? 'Internal'
+      : 'Volunteer';
+
   return (
     <PageScroll
+      header={
+        <PageHeader
+          title="Noori Donation"
+          subtitle={`Assalamu Alaikum, ${user?.name ?? 'Team'}`}
+          trailing={<Badge label={roleLabel} tone="success" />}
+        />
+      }
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[palette.primary]} />
-      }>
-      <PageHeader
-        eyebrow="Dashboard"
-        title={`Assalamu Alaikum, ${user?.name ?? 'Team'}`}
-        subtitle="Track donations, review recent activity, and jump back into receipt generation."
-        trailing={<Badge label="Live data" tone="success" />}
-      />
+      }
+      contentContainerStyle={styles.content}>
+      <SurfaceCard style={styles.heroCard}>
+        <Text style={styles.heroEyebrow}>Collection Summary</Text>
+        <Text style={styles.heroAmount}>{formatCurrency(stats?.totalAmount || 0)}</Text>
+        <Text style={styles.heroCopy}>Updated for {todayLabel}</Text>
 
-      <View style={styles.metricsGrid}>
-        <MetricCard label="Total raised" value={formatCurrency(stats?.totalAmount)} accent />
-        <MetricCard label="Donations" value={String(stats?.totalDonations || 0)} />
-        <MetricCard label="This month" value={String(stats?.monthlyDonations || 0)} />
-        <SurfaceCard style={styles.quickActionCard}>
-          <Text style={styles.quickActionTitle}>New donation</Text>
-          <Text style={styles.quickActionText}>Start a fresh receipt in one step.</Text>
-          <Button label="Create receipt" onPress={() => navigation.navigate('Donate')} style={styles.quickActionButton} />
-        </SurfaceCard>
+        <View style={styles.heroMetricsRow}>
+          <View style={styles.heroMetric}>
+            <Text style={styles.heroMetricLabel}>Donations</Text>
+            <Text style={styles.heroMetricValue}>{stats?.totalDonations || 0}</Text>
+          </View>
+          <View style={styles.heroMetricDivider} />
+          <View style={styles.heroMetric}>
+            <Text style={styles.heroMetricLabel}>This Month</Text>
+            <Text style={styles.heroMetricValue}>{stats?.monthlyDonations || 0}</Text>
+          </View>
+        </View>
+      </SurfaceCard>
+
+      <View style={styles.tilesWrap}>
+        <QuickTile
+          title="New Donation"
+          caption="Create and issue a receipt"
+          tag="ND"
+          emphasized
+          onPress={() => navigation.navigate('Donate')}
+        />
+        <QuickTile
+          title="History"
+          caption="Search and review records"
+          tag="HI"
+          onPress={() => navigation.navigate('History')}
+        />
+        <QuickTile
+          title="Team"
+          caption="Manage user access"
+          tag="TM"
+          onPress={() => navigation.navigate('Users')}
+        />
+        <QuickTile
+          title="About"
+          caption="Profile and app details"
+          tag="AB"
+          onPress={() => navigation.navigate('Settings')}
+        />
+        <QuickTile
+          title="Recent Receipt"
+          caption={recentDonation ? recentDonation.receiptNumber : 'Open the latest preview'}
+          tag="RC"
+          onPress={() => {
+            if (!recentDonation) {
+              navigation.navigate('History');
+              return;
+            }
+
+            navigation.navigate('ReceiptPreview', {
+              donationId: recentDonation._id,
+              receiptUrl: recentDonation.receiptUrl,
+              receiptNumber: recentDonation.receiptNumber,
+              donorName: recentDonation.donorName,
+              mobileNumber: recentDonation.mobileNumber,
+              qrImageUrl: recentDonation.qrImageUrl,
+            });
+          }}
+        />
+        <QuickTile
+          title="Refresh"
+          caption="Pull latest totals"
+          tag="RF"
+          onPress={refresh}
+        />
       </View>
 
-      {/* ─── Monthly trend bar chart ─── */}
       <SurfaceCard style={styles.sectionCard}>
         <SectionHeading
-          title="Monthly trend"
-          caption="Donation amount collected over the last 6 months."
+          title="Monthly Trend"
+          caption="Donation amount over the recent collection months."
         />
-        <MonthlyBarChart data={stats?.monthlyTrend ?? []} />
+        <TrendChart data={stats?.monthlyTrend ?? []} />
       </SurfaceCard>
 
       <SurfaceCard style={styles.sectionCard}>
         <SectionHeading
-          title="By donation type"
-          caption="A quick distribution snapshot across your active categories."
+          title="Donation Types"
+          caption="Live distribution of your active collection categories."
         />
-        {(stats?.byType ?? []).map((item: any, index: number) => (
-          <View
-            key={item._id}
-            style={[styles.listRow, index === (stats?.byType?.length ?? 0) - 1 && styles.listRowLast]}>
-            <View>
-              <Text style={styles.listLabel}>{item._id}</Text>
-              <Text style={styles.listCaption}>{item.count} donations</Text>
+
+        {(stats?.byType ?? []).map(item => (
+          <View key={item._id} style={styles.progressRow}>
+            <View style={styles.progressTextWrap}>
+              <Text style={styles.progressLabel}>{item._id}</Text>
+              <Text style={styles.progressCaption}>{item.count} entries</Text>
             </View>
-            <Badge label={formatCurrency(item.total)} tone="primary" />
+            <View style={styles.progressBarTrack}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  {
+                    width: `${Math.min(
+                      100,
+                      Math.max(12, (item.total / Math.max(stats?.totalAmount || 1, 1)) * 100),
+                    )}%`,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.progressAmount}>{formatCurrency(item.total)}</Text>
           </View>
         ))}
+
         {stats?.byType?.length ? null : (
-          <Text style={styles.emptyText}>Donation type totals will appear here after records are added.</Text>
+          <Text style={styles.emptyText}>Donation totals will appear here after the first records are added.</Text>
         )}
       </SurfaceCard>
 
       <SurfaceCard style={styles.sectionCard}>
         <SectionHeading
-          title="Recent donations"
-          caption="Tap any record to open the receipt preview and share flow."
+          title="Recent Donations"
+          caption="Tap any row to reopen the receipt preview."
           action={<Badge label={`${stats?.recentDonations?.length || 0} items`} />}
         />
-        {(stats?.recentDonations ?? []).map((donation: any, index: number) => (
+
+        {(stats?.recentDonations ?? []).map((donation, index) => (
           <TouchableOpacity
             key={donation._id}
-            activeOpacity={0.9}
+            activeOpacity={0.88}
             style={[
               styles.recentRow,
-              index === (stats?.recentDonations?.length ?? 0) - 1 && styles.listRowLast,
+              index === (stats?.recentDonations?.length ?? 0) - 1 ? styles.recentRowLast : null,
             ]}
             onPress={() =>
               navigation.navigate('ReceiptPreview', {
@@ -178,91 +285,300 @@ export default function DashboardScreen({ navigation }: any) {
                 receiptNumber: donation.receiptNumber,
                 donorName: donation.donorName,
                 mobileNumber: donation.mobileNumber,
+                qrImageUrl: donation.qrImageUrl,
               })
             }>
-            <View style={styles.recentLeft}>
+            <View style={styles.recentIndex}>
+              <Text style={styles.recentIndexText}>{index + 1}</Text>
+            </View>
+
+            <View style={styles.recentInfo}>
               <Text style={styles.recentName}>{donation.donorName}</Text>
               <Text style={styles.recentMeta}>
                 {donation.donationType} • {donation.receiptNumber}
               </Text>
             </View>
+
             <View style={styles.recentRight}>
               <Text style={styles.recentAmount}>{formatCurrency(donation.amount)}</Text>
               <Badge
-                label={donation.whatsappSent ? 'WhatsApp sent' : 'Pending send'}
+                label={donation.whatsappSent ? 'Sent' : 'Pending'}
                 tone={donation.whatsappSent ? 'success' : 'warning'}
               />
             </View>
           </TouchableOpacity>
         ))}
+
         {stats?.recentDonations?.length ? null : (
-          <Text style={styles.emptyText}>Recent donations will appear once you start recording entries.</Text>
+          <Text style={styles.emptyText}>Recent receipts will appear once donations are recorded.</Text>
         )}
       </SurfaceCard>
+
+      <Button
+        label="Create Donation Receipt"
+        onPress={() => navigation.navigate('Donate')}
+        style={styles.bottomButton}
+      />
     </PageScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  metricsGrid: {
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: {
+    paddingTop: spacing.xs,
+  },
+  heroCard: {
+    backgroundColor: palette.primary,
+    borderColor: palette.primary,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    ...shadows.md,
+  },
+  heroEyebrow: {
+    color: 'rgba(255,255,255,0.74)',
+    fontSize: fs(11),
+    fontWeight: '700',
+    letterSpacing: 0.9,
+    textTransform: 'uppercase',
+  },
+  heroAmount: {
+    color: '#FFFFFF',
+    fontSize: fs(30),
+    fontWeight: '700',
+    letterSpacing: -0.8,
+    marginTop: spacing.sm,
+  },
+  heroCopy: {
+    color: 'rgba(255,255,255,0.76)',
+    fontSize: fs(13),
+    marginTop: spacing.xs,
+  },
+  heroMetricsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.lg,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(0,0,0,0.16)',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  heroMetric: {
+    flex: 1,
+  },
+  heroMetricDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    marginHorizontal: spacing.md,
+  },
+  heroMetricLabel: {
+    color: 'rgba(255,255,255,0.68)',
+    fontSize: fs(11),
+    fontWeight: '600',
+  },
+  heroMetricValue: {
+    color: '#FFFFFF',
+    fontSize: fs(18),
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  tilesWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.md,
     marginTop: spacing.lg,
-    marginBottom: spacing.lg,
   },
-  metricCard: { width: '47%', minHeight: 124, justifyContent: 'space-between', backgroundColor: palette.surface },
-  metricCardAccent: { backgroundColor: palette.primary, borderColor: palette.primary, ...shadows.sm },
-  metricCardMuted: { backgroundColor: palette.surfaceStrong },
-  metricValue: { color: palette.text, fontSize: fs(28), fontWeight: '800' },
-  metricValueAccent: { color: palette.surface },
-  metricLabel: { color: palette.textMuted, fontSize: fs(13), fontWeight: '600' },
-  metricLabelAccent: { color: 'rgba(244, 248, 243, 0.84)' },
-  quickActionCard: { width: '47%', minHeight: 124, justifyContent: 'space-between', backgroundColor: palette.primarySoft, borderColor: '#BBF7D0' },
-  quickActionTitle: { color: palette.primaryDark, fontSize: fs(18), fontWeight: '800' },
-  quickActionText: { color: palette.textMuted, fontSize: fs(13), lineHeight: 19, marginTop: spacing.xs },
-  quickActionButton: { minHeight: 42, borderRadius: radius.sm, marginTop: spacing.md },
-  sectionCard: { marginBottom: spacing.lg, paddingTop: spacing.lg },
-  listRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  quickTile: {
+    width: '47.5%',
+    minHeight: 120,
+    backgroundColor: palette.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: spacing.md,
     justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: palette.border,
+    ...shadows.sm,
   },
-  listRowLast: { paddingBottom: 0 },
-  listLabel: { color: palette.text, fontSize: fs(15), fontWeight: '700' },
-  listCaption: { color: palette.textMuted, fontSize: fs(12), marginTop: 2 },
-  recentRow: {
-    flexDirection: 'row',
+  quickTileAccent: {
+    backgroundColor: palette.primarySoft,
+    borderColor: palette.accentSoft,
+  },
+  quickTileIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: palette.surfaceMuted,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: palette.border,
+    justifyContent: 'center',
   },
-  recentLeft: { flex: 1, paddingRight: spacing.md },
-  recentName: { color: palette.text, fontSize: fs(15), fontWeight: '700' },
-  recentMeta: { color: palette.textMuted, fontSize: fs(12), marginTop: 2 },
-  recentRight: { alignItems: 'flex-end', gap: spacing.xs },
-  recentAmount: { color: palette.primaryDark, fontSize: fs(15), fontWeight: '800' },
-  emptyText: { color: palette.textSoft, fontSize: fs(13), paddingVertical: spacing.md },
-  // ─── Chart ────────────────────────────────────────────────────────────────────
+  quickTileIconAccent: {
+    backgroundColor: palette.primary,
+  },
+  quickTileIconText: {
+    color: palette.primaryDark,
+    fontSize: fs(11),
+    fontWeight: '700',
+  },
+  quickTileIconTextAccent: {
+    color: '#FFFFFF',
+  },
+  quickTileTitle: {
+    color: palette.text,
+    fontSize: fs(15),
+    fontWeight: '700',
+    marginTop: spacing.sm,
+  },
+  quickTileTitleAccent: {
+    color: palette.primaryDark,
+  },
+  quickTileCaption: {
+    color: palette.textMuted,
+    fontSize: fs(12),
+    lineHeight: 17,
+    marginTop: spacing.xs,
+  },
+  quickTileCaptionAccent: {
+    color: palette.primaryDark,
+  },
+  sectionCard: {
+    marginTop: spacing.lg,
+  },
   chartWrap: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     marginTop: spacing.lg,
-    height: 140,
+    height: BAR_HEIGHT + 48,
     borderTopWidth: 1,
     borderTopColor: palette.border,
     paddingTop: spacing.md,
   },
-  chartCol: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 4 },
-  chartBarValue: { color: palette.textMuted, fontSize: fs(10), fontWeight: '600' },
-  chartBarTrack: { width: '68%', maxWidth: 36, height: 100, justifyContent: 'flex-end' },
-  chartBar: { width: '100%', borderRadius: 6, minHeight: 4 },
-  chartBarLabel: { color: palette.textSoft, fontSize: fs(11), fontWeight: '600' },
+  chartCol: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: spacing.xs,
+  },
+  chartBarValue: {
+    color: palette.textMuted,
+    fontSize: fs(10),
+    fontWeight: '600',
+  },
+  chartBarTrack: {
+    width: '62%',
+    height: BAR_HEIGHT,
+    justifyContent: 'flex-end',
+  },
+  chartBar: {
+    width: '100%',
+    borderRadius: 6,
+    minHeight: 4,
+  },
+  chartBarActive: {
+    backgroundColor: palette.primary,
+  },
+  chartBarInactive: {
+    backgroundColor: palette.surfaceStrong,
+  },
+  chartBarLabel: {
+    color: palette.textSoft,
+    fontSize: fs(11),
+    fontWeight: '600',
+  },
+  progressRow: {
+    marginTop: spacing.md,
+  },
+  progressTextWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  progressLabel: {
+    color: palette.text,
+    fontSize: fs(14),
+    fontWeight: '700',
+  },
+  progressCaption: {
+    color: palette.textMuted,
+    fontSize: fs(11),
+  },
+  progressBarTrack: {
+    height: 8,
+    borderRadius: radius.pill,
+    backgroundColor: palette.surfaceMuted,
+    marginTop: spacing.sm,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: radius.pill,
+    backgroundColor: palette.primary,
+  },
+  progressAmount: {
+    color: palette.primaryDark,
+    fontSize: fs(12),
+    fontWeight: '700',
+    marginTop: spacing.sm,
+  },
+  recentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: palette.border,
+    gap: spacing.md,
+  },
+  recentRowLast: {
+    paddingBottom: 0,
+  },
+  recentIndex: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: palette.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recentIndexText: {
+    color: palette.primaryDark,
+    fontSize: fs(16),
+    fontWeight: '700',
+  },
+  recentInfo: {
+    flex: 1,
+  },
+  recentName: {
+    color: palette.text,
+    fontSize: fs(15),
+    fontWeight: '700',
+  },
+  recentMeta: {
+    color: palette.textMuted,
+    fontSize: fs(11),
+    marginTop: spacing.xs,
+  },
+  recentRight: {
+    alignItems: 'flex-end',
+    gap: spacing.xs,
+  },
+  recentAmount: {
+    color: palette.primaryDark,
+    fontSize: fs(13),
+    fontWeight: '700',
+  },
+  emptyText: {
+    color: palette.textSoft,
+    fontSize: fs(12),
+    lineHeight: 18,
+    paddingTop: spacing.md,
+  },
+  bottomButton: {
+    marginTop: spacing.lg,
+  },
 });

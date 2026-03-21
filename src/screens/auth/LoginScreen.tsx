@@ -16,11 +16,10 @@ import {
   FieldGroup,
   InputField,
   Page,
-  PageHeader,
   SurfaceCard,
 } from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
-import { palette, spacing } from '../../theme/theme';
+import { fs, palette, shadows, spacing } from '../../theme/theme';
 
 export default function LoginScreen({ navigation }: any) {
   const { login } = useAuth();
@@ -49,21 +48,25 @@ export default function LoginScreen({ navigation }: any) {
 
   return (
     <Page style={styles.page}>
-      <StatusBar barStyle="light-content" backgroundColor={palette.primaryDark} />
+      <StatusBar barStyle="light-content" backgroundColor={palette.primary} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <PageHeader
-            eyebrow="Noori Donation"
-            title="Modern receipt workflow for your donation desk."
-            subtitle="Sign in to manage entries, generate receipts, and share them from one clean dashboard."
-            trailing={<Badge label="Secure sign in" tone="success" />}
-          />
+          <View style={styles.hero}>
+            <Badge label="Donation Desk" tone="success" />
+            <View style={styles.brandMark}>
+              <Text style={styles.brandMarkText}>ND</Text>
+            </View>
+            <Text style={styles.heroTitle}>Noori Donation</Text>
+            <Text style={styles.heroSubtitle}>
+              Sign in to record donations, generate receipts, and share them without leaving the app.
+            </Text>
+          </View>
 
           <SurfaceCard style={styles.formCard}>
             <View style={styles.formHeader}>
-              <Text style={styles.formTitle}>Welcome back</Text>
+              <Text style={styles.formTitle}>Welcome Back</Text>
               <Text style={styles.formSubtitle}>Use your registered email address to continue.</Text>
             </View>
 
@@ -86,7 +89,7 @@ export default function LoginScreen({ navigation }: any) {
               />
             </FieldGroup>
 
-            <Button label="Sign in" loading={loading} onPress={handleLogin} style={styles.primaryButton} />
+            <Button label="Sign In" loading={loading} onPress={handleLogin} style={styles.primaryButton} />
 
             <TouchableOpacity
               activeOpacity={0.8}
@@ -103,32 +106,68 @@ export default function LoginScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   page: {
-    backgroundColor: palette.background,
+    backgroundColor: palette.primary,
   },
   flex: {
     flex: 1,
+    backgroundColor: palette.primary,
   },
   content: {
     flexGrow: 1,
     padding: spacing.screen,
     justifyContent: 'center',
-    gap: spacing.lg,
+  },
+  hero: {
+    alignItems: 'center',
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.xl,
+  },
+  brandMark: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.78)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+  },
+  brandMarkText: {
+    color: '#FFFFFF',
+    fontSize: fs(30),
+    fontWeight: '700',
+    letterSpacing: -1,
+  },
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: fs(28),
+    fontWeight: '700',
+    letterSpacing: -0.8,
+    marginTop: spacing.lg,
+  },
+  heroSubtitle: {
+    color: 'rgba(255,255,255,0.78)',
+    fontSize: fs(14),
+    lineHeight: 21,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   formCard: {
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xl,
+    ...shadows.lg,
   },
   formHeader: {
     marginBottom: spacing.lg,
   },
   formTitle: {
     color: palette.text,
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: fs(24),
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
   formSubtitle: {
     color: palette.textMuted,
-    fontSize: 14,
+    fontSize: fs(14),
     lineHeight: 21,
     marginTop: spacing.xs,
   },
@@ -141,7 +180,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     color: palette.primary,
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '700',
   },
 });

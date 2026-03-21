@@ -20,6 +20,7 @@ export interface RecentDonation {
   donationType: string;
   receiptNumber: string;
   receiptUrl?: string;
+  qrImageUrl?: string;
   mobileNumber?: string;
   whatsappSent: boolean;
   createdAt: string;

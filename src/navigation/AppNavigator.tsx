@@ -12,26 +12,42 @@ import ReceiptPreviewScreen from '../screens/donations/ReceiptPreviewScreen';
 import HistoryScreen from '../screens/history/HistoryScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import UsersScreen from '../screens/users/UsersScreen';
-import { navigationTheme, palette, radius, shadows } from '../theme/theme';
+import { navigationTheme, palette, radius } from '../theme/theme';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function DashboardIcon({ color }: { color: string }) {
+const TAB_LABELS: Record<string, string> = {
+  Dashboard: 'Home',
+  Donate: 'Donate',
+  History: 'History',
+  Users: 'Team',
+  Settings: 'About',
+};
+
+function HomeIcon({ color }: { color: string }) {
   return (
-    <View style={styles.gridIcon}>
-      {Array.from({ length: 4 }).map((_, index) => (
-        <View key={index} style={[styles.gridCell, { backgroundColor: color }]} />
-      ))}
+    <View style={styles.houseIcon}>
+      <View style={[styles.houseRoof, { borderBottomColor: color }]} />
+      <View style={[styles.houseBase, { borderColor: color }]} />
+      <View style={[styles.houseDoor, { backgroundColor: color }]} />
     </View>
   );
 }
 
 function DonateIcon({ color }: { color: string }) {
   return (
-    <View style={[styles.plusCircle, { borderColor: color }]}>
-      <View style={[styles.plusHorizontal, { backgroundColor: color }]} />
-      <View style={[styles.plusVertical, { backgroundColor: color }]} />
+    <View style={[styles.receiptIcon, { borderColor: color }]}>
+      <View style={[styles.receiptFold, { borderLeftColor: color }]} />
+      {[0, 1, 2].map(index => (
+        <View
+          key={index}
+          style={[
+            styles.receiptLine,
+            { backgroundColor: color, top: 4 + index * 5 },
+          ]}
+        />
+      ))}
     </View>
   );
 }
@@ -44,7 +60,7 @@ function HistoryIcon({ color }: { color: string }) {
           key={index}
           style={[
             styles.historyLine,
-            HISTORY_LINE_STYLES[index],
+            HISTORY_LINE_WIDTHS[index],
             HISTORY_LINE_OFFSETS[index],
             { backgroundColor: color },
           ]}
@@ -58,8 +74,8 @@ function UsersIcon({ color }: { color: string }) {
   return (
     <View style={styles.usersIcon}>
       <View style={[styles.userHeadPrimary, { borderColor: color }]} />
-      <View style={[styles.userHeadSecondary, { borderColor: color }]} />
       <View style={[styles.userBodyPrimary, { borderColor: color }]} />
+      <View style={[styles.userHeadSecondary, { borderColor: color }]} />
       <View style={[styles.userBodySecondary, { borderColor: color }]} />
     </View>
   );
@@ -67,24 +83,9 @@ function UsersIcon({ color }: { color: string }) {
 
 function SettingsIcon({ color }: { color: string }) {
   return (
-    <View style={styles.settingsIcon}>
-      {[0, 1, 2].map(index => (
-        <View
-          key={index}
-          style={[
-            styles.settingsTrack,
-            SETTINGS_TRACK_STYLES[index],
-            { backgroundColor: color },
-          ]}>
-          <View
-            style={[
-              styles.settingsKnob,
-              SETTINGS_KNOB_STYLES[index],
-              { backgroundColor: color },
-            ]}
-          />
-        </View>
-      ))}
+    <View style={[styles.infoCircle, { borderColor: color }]}>
+      <View style={[styles.infoStem, { backgroundColor: color }]} />
+      <View style={[styles.infoDot, { backgroundColor: color }]} />
     </View>
   );
 }
@@ -92,7 +93,7 @@ function SettingsIcon({ color }: { color: string }) {
 function renderTabIcon(name: string, color: string) {
   switch (name) {
     case 'Dashboard':
-      return <DashboardIcon color={color} />;
+      return <HomeIcon color={color} />;
     case 'Donate':
       return <DonateIcon color={color} />;
     case 'History':
@@ -102,7 +103,7 @@ function renderTabIcon(name: string, color: string) {
     case 'Settings':
       return <SettingsIcon color={color} />;
     default:
-      return <View style={[styles.gridCell, { backgroundColor: color }]} />;
+      return <HomeIcon color={color} />;
   }
 }
 
@@ -115,9 +116,8 @@ function MainTabs() {
   const { user } = useAuth();
   const roles: string[] = Array.isArray(user?.roles) ? user.roles : ['user'];
 
-  const isAdmin         = roles.includes('admin');
+  const isAdmin = roles.includes('admin');
   const isInternalAdmin = roles.includes('internal-admin');
-  const isUserOnly      = !isAdmin && !isInternalAdmin;
 
   return (
     <Tab.Navigator
@@ -125,27 +125,24 @@ function MainTabs() {
         headerShown: false,
         sceneStyle: { backgroundColor: palette.background },
         tabBarHideOnKeyboard: true,
-        tabBarActiveTintColor: palette.primaryDark,
-        tabBarInactiveTintColor: palette.textSoft,
+        tabBarActiveTintColor: '#FFFFFF',
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.62)',
         tabBarLabelStyle: styles.tabLabel,
         tabBarIconStyle: styles.tabIconWrap,
         tabBarStyle: styles.tabBar,
         tabBarItemStyle: styles.tabBarItem,
+        tabBarActiveBackgroundColor: 'rgba(255,255,255,0.08)',
         tabBarIcon: createTabBarIcon(route.name),
+        tabBarLabel: TAB_LABELS[route.name] ?? route.name,
       })}>
-      {/* admin + internal-admin: see Dashboard */}
       {(isAdmin || isInternalAdmin) && (
         <Tab.Screen name="Dashboard" component={DashboardScreen} />
       )}
-      {/* admin + internal-admin: see Donate */}
       {(isAdmin || isInternalAdmin) && (
-        <Tab.Screen name="Donate" component={DonationFormScreen} options={{ tabBarLabel: 'Donate' }} />
+        <Tab.Screen name="Donate" component={DonationFormScreen} />
       )}
-      {/* everyone: see History */}
       <Tab.Screen name="History" component={HistoryScreen} />
-      {/* everyone: see Users (view-only for user role, admin-only writes handled by backend) */}
       <Tab.Screen name="Users" component={UsersScreen} />
-      {/* everyone: see Settings (logout is available to all roles) */}
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
@@ -157,7 +154,7 @@ export default function AppNavigator() {
   if (isLoading) {
     return (
       <View style={styles.loadingScreen}>
-        <ActivityIndicator color={palette.primary} size="large" />
+        <ActivityIndicator color="#FFFFFF" size="large" />
       </View>
     );
   }
@@ -173,19 +170,7 @@ export default function AppNavigator() {
         ) : (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
-            <Stack.Screen
-              name="ReceiptPreview"
-              component={ReceiptPreviewScreen}
-              options={{
-                headerShown: true,
-                title: 'Receipt Preview',
-                headerShadowVisible: false,
-                headerTitleStyle: styles.stackTitle,
-                headerStyle: { backgroundColor: palette.surface },
-                headerTintColor: palette.text,
-                contentStyle: { backgroundColor: palette.background },
-              }}
-            />
+            <Stack.Screen name="ReceiptPreview" component={ReceiptPreviewScreen} />
           </>
         )}
       </Stack.Navigator>
@@ -196,82 +181,105 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   loadingScreen: {
     flex: 1,
-    backgroundColor: palette.background,
+    backgroundColor: palette.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stackTitle: {
-    color: palette.text,
-    fontSize: 17,
-    fontWeight: '700',
-  },
   tabBar: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: Platform.OS === 'ios' ? 18 : 12,
-    height: 74,
+    left: 14,
+    right: 14,
+    bottom: 14,
+    height: Platform.OS === 'ios' ? 86 : 78,
     borderTopWidth: 0,
-    borderWidth: 1,
-    borderColor: palette.border,
-    backgroundColor: palette.surface,
-    borderRadius: radius.xl,
+    borderRadius: 28,
+    backgroundColor: palette.primary,
     paddingTop: 10,
-    paddingBottom: 10,
+    paddingBottom: Platform.OS === 'ios' ? 16 : 10,
     paddingHorizontal: 8,
-    ...shadows.md,
+    elevation: 0,
+    shadowColor: palette.shadow,
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
   },
   tabBarItem: {
+    marginHorizontal: 2,
     borderRadius: radius.md,
   },
   tabIconWrap: {
     marginBottom: 2,
   },
   tabLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
-  gridIcon: {
-    width: 20,
+  houseIcon: {
+    width: 22,
     height: 20,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-  },
-  gridCell: {
-    width: 8,
-    height: 8,
-    borderRadius: 3,
-  },
-  plusCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.8,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
   },
-  plusHorizontal: {
-    width: 10,
-    height: 1.8,
-    borderRadius: 999,
+  houseRoof: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 9,
+    borderRightWidth: 9,
+    borderBottomWidth: 7,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    marginBottom: 1,
   },
-  plusVertical: {
+  houseBase: {
+    width: 15,
+    height: 11,
+    borderWidth: 1.8,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
+  },
+  houseDoor: {
     position: 'absolute',
-    width: 1.8,
-    height: 10,
+    bottom: 1,
+    width: 3,
+    height: 6,
+    borderRadius: 2,
+  },
+  receiptIcon: {
+    width: 18,
+    height: 20,
+    borderWidth: 1.8,
+    borderRadius: 4,
+    position: 'relative',
+  },
+  receiptFold: {
+    position: 'absolute',
+    right: -1,
+    top: -1,
+    width: 0,
+    height: 0,
+    borderTopWidth: 6,
+    borderLeftWidth: 6,
+    borderTopColor: 'transparent',
+  },
+  receiptLine: {
+    position: 'absolute',
+    left: 4,
+    right: 4,
+    height: 1.7,
     borderRadius: 999,
   },
   historyIcon: {
     width: 18,
-    height: 18,
+    height: 16,
     position: 'relative',
   },
   historyLine: {
     position: 'absolute',
+    left: 0,
     height: 2,
     borderRadius: 999,
-    right: 0,
   },
   historyLineWide: {
     width: 16,
@@ -302,16 +310,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 1.6,
   },
-  userHeadSecondary: {
-    position: 'absolute',
-    right: 1,
-    top: 2,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    borderWidth: 1.4,
-    opacity: 0.9,
-  },
   userBodyPrimary: {
     position: 'absolute',
     left: 0,
@@ -323,6 +321,16 @@ const styles = StyleSheet.create({
     borderWidth: 1.6,
     borderBottomWidth: 0,
   },
+  userHeadSecondary: {
+    position: 'absolute',
+    right: 1,
+    top: 2,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    borderWidth: 1.4,
+    opacity: 0.92,
+  },
   userBodySecondary: {
     position: 'absolute',
     right: 0,
@@ -333,56 +341,30 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 7,
     borderWidth: 1.4,
     borderBottomWidth: 0,
-    opacity: 0.9,
+    opacity: 0.92,
   },
-  settingsIcon: {
-    width: 18,
-    height: 18,
-    position: 'relative',
+  infoCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  settingsTrack: {
-    position: 'absolute',
-    left: 0,
-    width: 18,
-    height: 2,
+  infoStem: {
+    width: 2.2,
+    height: 7,
     borderRadius: 999,
+    marginTop: 3,
   },
-  settingsTrackOffset0: {
-    top: 0,
-  },
-  settingsTrackOffset1: {
-    top: 6,
-  },
-  settingsTrackOffset2: {
-    top: 12,
-  },
-  settingsKnob: {
+  infoDot: {
     position: 'absolute',
-    top: -2,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  knobLeftPrimary: {
-    left: 4,
-  },
-  knobLeftSecondary: {
-    left: 9,
-  },
-  knobLeftTertiary: {
-    left: 2,
+    top: 4,
+    width: 2.2,
+    height: 2.2,
+    borderRadius: 999,
   },
 });
 
-const HISTORY_LINE_STYLES = [styles.historyLineWide, styles.historyLineWide, styles.historyLineShort];
+const HISTORY_LINE_WIDTHS = [styles.historyLineWide, styles.historyLineWide, styles.historyLineShort];
 const HISTORY_LINE_OFFSETS = [styles.historyLineOffset0, styles.historyLineOffset1, styles.historyLineOffset2];
-const SETTINGS_TRACK_STYLES = [
-  styles.settingsTrackOffset0,
-  styles.settingsTrackOffset1,
-  styles.settingsTrackOffset2,
-];
-const SETTINGS_KNOB_STYLES = [
-  styles.knobLeftPrimary,
-  styles.knobLeftSecondary,
-  styles.knobLeftTertiary,
-];

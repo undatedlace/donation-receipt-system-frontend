@@ -11,6 +11,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 jest.mock('@react-navigation/native', () => ({
   NavigationContainer: ({children}: {children: React.ReactNode}) => children,
+  useFocusEffect: (callback: () => void) => callback(),
 }));
 
 jest.mock('@react-navigation/bottom-tabs', () => ({
@@ -62,6 +63,13 @@ jest.mock('react-native-safe-area-context', () => ({
 
 jest.mock('react-native-webview', () => ({
   WebView: () => null,
+}));
+
+jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker');
+
+jest.mock('react-native-image-picker', () => ({
+  launchCamera: jest.fn(() => Promise.resolve({didCancel: true})),
+  launchImageLibrary: jest.fn(() => Promise.resolve({didCancel: true})),
 }));
 
 import App from '../App';

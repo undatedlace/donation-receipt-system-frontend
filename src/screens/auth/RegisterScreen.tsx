@@ -16,11 +16,10 @@ import {
   FieldGroup,
   InputField,
   Page,
-  PageHeader,
   SurfaceCard,
 } from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
-import { palette, spacing } from '../../theme/theme';
+import { fs, palette, shadows, spacing } from '../../theme/theme';
 
 export default function RegisterScreen({ navigation }: any) {
   const { register } = useAuth();
@@ -52,21 +51,25 @@ export default function RegisterScreen({ navigation }: any) {
 
   return (
     <Page style={styles.page}>
-      <StatusBar barStyle="light-content" backgroundColor={palette.primaryDark} />
+      <StatusBar barStyle="light-content" backgroundColor={palette.primary} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <PageHeader
-            eyebrow="New account"
-            title="Create access for your donation operations team."
-            subtitle="Register once, then manage donations, receipts, and WhatsApp delivery from the app."
-            trailing={<Badge label="Green workspace" tone="primary" />}
-          />
+          <View style={styles.hero}>
+            <Badge label="New Workspace" tone="success" />
+            <View style={styles.brandMark}>
+              <Text style={styles.brandMarkText}>ND</Text>
+            </View>
+            <Text style={styles.heroTitle}>Create Account</Text>
+            <Text style={styles.heroSubtitle}>
+              Set up access for your collection team and keep donation operations inside one consistent workflow.
+            </Text>
+          </View>
 
           <SurfaceCard style={styles.formCard}>
             <View style={styles.formHeader}>
-              <Text style={styles.formTitle}>Create your account</Text>
+              <Text style={styles.formTitle}>Register</Text>
               <Text style={styles.formSubtitle}>Keep it simple: name, email, and a secure password.</Text>
             </View>
 
@@ -97,7 +100,7 @@ export default function RegisterScreen({ navigation }: any) {
               />
             </FieldGroup>
 
-            <Button label="Create account" loading={loading} onPress={handleRegister} style={styles.primaryButton} />
+            <Button label="Create Account" loading={loading} onPress={handleRegister} style={styles.primaryButton} />
 
             <TouchableOpacity
               activeOpacity={0.8}
@@ -114,32 +117,68 @@ export default function RegisterScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   page: {
-    backgroundColor: palette.background,
+    backgroundColor: palette.primary,
   },
   flex: {
     flex: 1,
+    backgroundColor: palette.primary,
   },
   content: {
     flexGrow: 1,
     padding: spacing.screen,
     justifyContent: 'center',
-    gap: spacing.lg,
+  },
+  hero: {
+    alignItems: 'center',
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.xl,
+  },
+  brandMark: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.78)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+  },
+  brandMarkText: {
+    color: '#FFFFFF',
+    fontSize: fs(30),
+    fontWeight: '700',
+    letterSpacing: -1,
+  },
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: fs(28),
+    fontWeight: '700',
+    letterSpacing: -0.8,
+    marginTop: spacing.lg,
+  },
+  heroSubtitle: {
+    color: 'rgba(255,255,255,0.78)',
+    fontSize: fs(14),
+    lineHeight: 21,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   formCard: {
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xl,
+    ...shadows.lg,
   },
   formHeader: {
     marginBottom: spacing.lg,
   },
   formTitle: {
     color: palette.text,
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: fs(24),
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
   formSubtitle: {
     color: palette.textMuted,
-    fontSize: 14,
+    fontSize: fs(14),
     lineHeight: 21,
     marginTop: spacing.xs,
   },
@@ -152,7 +191,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     color: palette.primary,
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '700',
   },
 });

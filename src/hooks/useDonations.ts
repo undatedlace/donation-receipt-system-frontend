@@ -14,7 +14,7 @@ export interface Donation {
   amount: number;
   receiptNumber: string;
   receiptUrl?: string;
-  whatsappSent: boolean;
+  qrImageUrl?: string;
   whatsappSentAt?: string;
   createdAt: string;
 }
