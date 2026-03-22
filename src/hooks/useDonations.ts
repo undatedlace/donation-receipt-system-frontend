@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { createDonation, deleteDonation, generateReceipt, getDonation, getDonations } from '../services/api';
+import { createDonation, deleteDonation, generateReceipt, getDonation, getDonations, updateDonation } from '../services/api';
 
 export interface Donation {
   _id: string;
@@ -116,6 +116,12 @@ export function useDonations() {
     setDonations(prev => prev.filter(d => d._id !== id));
   }, []);
 
+  const editDonation = useCallback(async (id: string, payload: Partial<CreateDonationPayload & { date: string }>): Promise<Donation> => {
+    const { data } = await updateDonation(id, payload);
+    setDonations(prev => prev.map(d => d._id === id ? { ...d, ...data } : d));
+    return data;
+  }, []);
+
   const fetchOne = useCallback(async (id: string): Promise<Donation> => {
     const { data } = await getDonation(id);
     return data;
@@ -134,6 +140,7 @@ export function useDonations() {
     loadMore,
     submitDonation,
     removeDonation,
+    editDonation,
     fetchOne,
   };
 }

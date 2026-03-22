@@ -31,6 +31,7 @@ export const getMe = () => api.get('/auth/me');
 export const createDonation = (data: any) => api.post('/donations', data);
 export const getDonations = (params?: any) => api.get('/donations', { params });
 export const getDonation = (id: string) => api.get(`/donations/${id}`);
+export const updateDonation = (id: string, data: any) => api.patch(`/donations/${id}`, data);
 export const deleteDonation = (id: string) => api.delete(`/donations/${id}`);
 
 // ─── Receipts ──────────────────────────────────────────────────────────

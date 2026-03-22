@@ -1,12 +1,14 @@
 import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { LineChart } from 'react-native-gifted-charts';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   Badge,
@@ -22,17 +24,101 @@ import { useStats } from '../../hooks/useStats';
 import { fs, palette, radius, shadows, spacing } from '../../theme/theme';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const BAR_HEIGHT = 130;
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CHART_WIDTH = SCREEN_WIDTH - spacing.screen * 2 - spacing.md * 2 - 8;
 
 const formatCurrency = (value: number) => `Rs ${Number(value || 0).toLocaleString('en-IN')}`;
-const formatAxisValue = (value: number) =>
-  value >= 1000 ? `${(value / 1000).toFixed(1)}k` : `${Math.round(value)}`;
 
 const todayLabel = new Date().toLocaleDateString('en-IN', {
   weekday: 'long',
   day: 'numeric',
   month: 'long',
 });
+
+function TrendChart({
+  data,
+}: {
+  data: Array<{ _id: { year: number; month: number }; total: number; count: number }>;
+}) {
+  if (!data || data.length === 0) {
+    return <Text style={styles.emptyText}>Monthly trend will appear once donations are recorded.</Text>;
+  }
+
+  // Always fill the last 6 months — pad months with no data as 0 so the area curve renders
+  const now = new Date();
+  const monthSlots = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    return { year: d.getFullYear(), month: d.getMonth() + 1 };
+  });
+  const dataByKey: Record<string, number> = {};
+  data.forEach(item => {
+    dataByKey[`${item._id.year}-${item._id.month}`] = item.total;
+  });
+  const items = monthSlots.map(m => ({
+    _id: m,
+    total: dataByKey[`${m.year}-${m.month}`] ?? 0,
+  }));
+
+  const maxValue = Math.max(...items.map(i => i.total), 1);
+  const yStepValue = Math.ceil(maxValue / 4 / 100) * 100 || 500;
+  const peakIdx = items.reduce(
+    (best, item, idx, arr) => (item.total > arr[best].total ? idx : best),
+    0,
+  );
+
+  const chartData = items.map((item, idx) => ({
+    value: item.total,
+    label: MONTH_NAMES[(item._id.month - 1 + 12) % 12],
+    hideDataPoint: item.total === 0 || idx !== peakIdx,
+    dataPointRadius: 6,
+    dataPointColor: '#F97316',
+    ...(idx === peakIdx && item.total > 0
+      ? {
+          dataPointLabelComponent: () => (
+            <Text style={styles.peakLabel}>
+              {item.total >= 1000 ? `${(item.total / 1000).toFixed(1)}k` : String(item.total)}
+            </Text>
+          ),
+          dataPointLabelShiftX: -14,
+          dataPointLabelShiftY: -22,
+        }
+      : {}),
+  }));
+
+  return (
+    <View style={styles.chartContainer}>
+      <LineChart
+        areaChart
+        data={chartData}
+        width={CHART_WIDTH - 32}
+        height={180}
+        curved
+        color="#2B8A6B"
+        thickness={2.5}
+        startFillColor="rgba(43,138,107,0.40)"
+        endFillColor="rgba(43,138,107,0.02)"
+        startOpacity={0.85}
+        endOpacity={0.05}
+        initialSpacing={8}
+        yAxisThickness={0}
+        xAxisThickness={1}
+        xAxisColor={palette.border}
+        yAxisTextStyle={styles.chartAxisText}
+        xAxisLabelTextStyle={styles.chartAxisText}
+        rulesColor="rgba(4,94,83,0.08)"
+        rulesType="dashed"
+        noOfSections={4}
+        maxValue={maxValue + yStepValue}
+        stepValue={yStepValue}
+        formatYLabel={v => {
+          const n = Number(v);
+          return n >= 1000 ? `${(n / 1000).toFixed(0)}k` : String(n);
+        }}
+        isAnimated
+      />
+    </View>
+  );
+}
 
 function QuickTile({
   title,
@@ -64,47 +150,6 @@ function QuickTile({
         {caption}
       </Text>
     </TouchableOpacity>
-  );
-}
-
-function TrendChart({
-  data,
-}: {
-  data: Array<{ _id: { year: number; month: number }; total: number; count: number }>;
-}) {
-  if (!data || data.length === 0) {
-    return <Text style={styles.emptyText}>Monthly trend will appear once donations are recorded.</Text>;
-  }
-
-  const items = data.slice(-6);
-  const maxValue = Math.max(...items.map(item => item.total), 1);
-
-  return (
-    <View style={styles.chartWrap}>
-      {items.map((item, index) => {
-        const pct = item.total / maxValue;
-        const barH = Math.max(4, Math.round(pct * BAR_HEIGHT));
-        const isLast = index === items.length - 1;
-        const label = MONTH_NAMES[(item._id.month - 1 + 12) % 12];
-        return (
-          <View key={`${item._id.year}-${item._id.month}`} style={styles.chartCol}>
-            <Text style={styles.chartBarValue}>
-              {item.total >= 1000 ? `${(item.total / 1000).toFixed(1)}k` : String(item.total)}
-            </Text>
-            <View style={styles.chartBarTrack}>
-              <View
-                style={[
-                  styles.chartBar,
-                  { height: barH },
-                  isLast ? styles.chartBarActive : styles.chartBarInactive,
-                ]}
-              />
-            </View>
-            <Text style={styles.chartBarLabel}>{label}</Text>
-          </View>
-        );
-      })}
-    </View>
   );
 }
 
@@ -448,15 +493,33 @@ const styles = StyleSheet.create({
   sectionCard: {
     marginTop: spacing.lg,
   },
+  chartContainer: {
+    marginTop: spacing.md,
+    marginLeft: -8,
+    overflow: 'hidden',
+  },
+  barTopLabel: {
+    color: palette.textMuted,
+    fontSize: fs(9),
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  peakLabel: {
+    color: palette.textSoft,
+    fontSize: fs(10),
+    fontWeight: '700',
+    backgroundColor: 'transparent',
+  },
+  chartAxisText: {
+    color: palette.textSoft,
+    fontSize: fs(10),
+    fontWeight: '600',
+  },
   chartWrap: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     marginTop: spacing.lg,
-    height: BAR_HEIGHT + 48,
-    borderTopWidth: 1,
-    borderTopColor: palette.border,
-    paddingTop: spacing.md,
   },
   chartCol: {
     flex: 1,
@@ -471,7 +534,6 @@ const styles = StyleSheet.create({
   },
   chartBarTrack: {
     width: '62%',
-    height: BAR_HEIGHT,
     justifyContent: 'flex-end',
   },
   chartBar: {

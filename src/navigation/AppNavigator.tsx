@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Image, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -23,6 +23,7 @@ const TAB_LABELS: Record<string, string> = {
   History: 'History',
   Users: 'Team',
   Settings: 'About',
+  Logout: 'Logout',
 };
 
 function HomeIcon({ color }: { color: string }) {
@@ -102,9 +103,20 @@ function renderTabIcon(name: string, color: string) {
       return <UsersIcon color={color} />;
     case 'Settings':
       return <SettingsIcon color={color} />;
+    case 'Logout':
+      return <LogoutIcon color={color} />;
     default:
       return <HomeIcon color={color} />;
   }
+}
+
+function LogoutIcon({ color }: { color: string }) {
+  return (
+    <View style={styles.logoutIcon}>
+      <View style={[styles.logoutArrow, { borderColor: color }]} />
+      <View style={[styles.logoutLine, { backgroundColor: color }]} />
+    </View>
+  );
 }
 
 const createTabBarIcon =
@@ -113,11 +125,18 @@ const createTabBarIcon =
     renderTabIcon(routeName, color);
 
 function MainTabs() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const roles: string[] = Array.isArray(user?.roles) ? user.roles : ['user'];
 
   const isAdmin = roles.includes('admin');
   const isInternalAdmin = roles.includes('internal-admin');
+
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: logout },
+    ]);
+  };
 
   return (
     <Tab.Navigator
@@ -131,7 +150,7 @@ function MainTabs() {
         tabBarIconStyle: styles.tabIconWrap,
         tabBarStyle: styles.tabBar,
         tabBarItemStyle: styles.tabBarItem,
-        tabBarActiveBackgroundColor: 'rgba(255,255,255,0.08)',
+        tabBarActiveBackgroundColor: 'rgba(255,255,255,0.15)',
         tabBarIcon: createTabBarIcon(route.name),
         tabBarLabel: TAB_LABELS[route.name] ?? route.name,
       })}>
@@ -144,6 +163,23 @@ function MainTabs() {
       <Tab.Screen name="History" component={HistoryScreen} />
       <Tab.Screen name="Users" component={UsersScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
+      <Tab.Screen
+        name="Logout"
+        component={SettingsScreen}
+        options={{
+          tabBarLabel: 'Logout',
+          tabBarButton: (props) => (
+            <TouchableOpacity
+              {...(props as any)}
+              activeOpacity={0.75}
+              onPress={handleLogout}
+              style={[props.style as any, styles.tabBarItem]}>
+              <LogoutIcon color="rgba(255,255,255,0.72)" />
+              <Text style={[styles.tabLabel, { color: 'rgba(255,255,255,0.72)' }]}>Logout</Text>
+            </TouchableOpacity>
+          ),
+        }}
+      />
     </Tab.Navigator>
   );
 }
@@ -220,7 +256,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: Platform.OS === 'ios' ? 16 : 10,
     paddingHorizontal: 8,
-    marginHorizontal: 16,
+    marginHorizontal: 8,
     elevation: 0,
     shadowColor: palette.shadow,
     shadowOpacity: 0.18,
@@ -230,6 +266,7 @@ const styles = StyleSheet.create({
   tabBarItem: {
     marginHorizontal: 2,
     borderRadius: radius.lg,
+    overflow: 'hidden',
   },
   tabIconWrap: {
     marginBottom: 2,
@@ -386,6 +423,30 @@ const styles = StyleSheet.create({
     top: 4,
     width: 2.2,
     height: 2.2,
+    borderRadius: 999,
+  },
+  logoutIcon: {
+    width: 20,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  logoutArrow: {
+    width: 10,
+    height: 10,
+    borderTopWidth: 1.8,
+    borderRightWidth: 1.8,
+    borderRadius: 1,
+    transform: [{ rotate: '45deg' }],
+    position: 'absolute',
+    right: 0,
+  },
+  logoutLine: {
+    position: 'absolute',
+    left: 0,
+    width: 12,
+    height: 1.8,
     borderRadius: 999,
   },
 });

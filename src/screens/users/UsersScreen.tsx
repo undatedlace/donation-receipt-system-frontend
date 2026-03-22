@@ -276,34 +276,63 @@ export default function UsersScreen() {
 
   const renderUser = ({ item }: { item: UserItem }) => {
     const initials = `${item.firstName?.[0] ?? ''}${item.lastName?.[0] ?? ''}`.toUpperCase() || '?';
+    const primaryRole = item.roles?.[0] ?? 'user';
+    const avatarColors: Record<string, { bg: string; text: string; ring: string }> = {
+      admin:           { bg: '#FEF2F2', text: '#DC2626', ring: '#FECACA' },
+      'internal-admin': { bg: '#EFF6FF', text: '#1D4ED8', ring: '#BFDBFE' },
+      user:            { bg: palette.primarySoft, text: palette.primaryDark, ring: palette.accentSoft },
+    };
+    const colors = avatarColors[primaryRole] || avatarColors.user;
 
     return (
-      <SurfaceCard style={styles.userCard}>
-        <View style={styles.avatarWrap}>
-          <Text style={styles.avatarText}>{initials}</Text>
+      <View style={styles.userCard}>
+        {/* Avatar with role ring */}
+        <View style={[styles.avatarRing, { borderColor: colors.ring }]}>
+          <View style={[styles.avatarWrap, { backgroundColor: colors.bg }]}>
+            <Text style={[styles.avatarText, { color: colors.text }]}>{initials}</Text>
+          </View>
         </View>
 
         <View style={styles.userBody}>
-          <Text style={styles.userName}>
-            {item.firstName} {item.lastName}
-          </Text>
-          <Text style={styles.userEmail}>{item.email}</Text>
-
-          <View style={styles.badgesRow}>
-            {(item.roles ?? []).map(role => (
-              <Badge key={role} label={role} tone={ROLE_TONES[role] || 'primary'} />
-            ))}
+          {/* Name + email row */}
+          <View style={styles.userNameRow}>
+            <Text style={styles.userName}>{item.firstName} {item.lastName}</Text>
           </View>
+          <Text style={styles.userEmail} numberOfLines={1}>{item.email}</Text>
+
+          {/* Roles + actions */}
+          <View style={styles.userFooter}>
+            <View style={styles.badgesRow}>
+              {(item.roles ?? []).map(role => (
+                <Badge key={role} label={role} tone={ROLE_TONES[role] || 'primary'} />
+              ))}
+            </View>
+          </View>
+
+          {canWrite ? (
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                activeOpacity={0.88}
+                style={styles.actionChip}
+                onPress={() => openEdit(item)}>
+                <Text style={styles.actionChipText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.88}
+                style={styles.actionChip}
+                onPress={() => openChangePwd(item)}>
+                <Text style={styles.actionChipText}>Password</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.88}
+                style={[styles.actionChip, styles.actionChipDanger]}
+                onPress={() => handleDelete(item)}>
+                <Text style={[styles.actionChipText, styles.actionChipTextDanger]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
         </View>
-
-        {canWrite ? (
-          <View style={styles.actionsColumn}>
-            <Button label="Edit" variant="secondary" onPress={() => openEdit(item)} style={styles.inlineButton} />
-            <Button label="Pwd" variant="ghost" onPress={() => openChangePwd(item)} style={styles.inlineButton} />
-            <Button label="Delete" variant="danger" onPress={() => handleDelete(item)} style={styles.inlineButton} />
-          </View>
-        ) : null}
-      </SurfaceCard>
+      </View>
     );
   };
 
@@ -568,42 +597,85 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   userCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
+    backgroundColor: palette.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: spacing.md,
     marginBottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    ...shadows.sm,
+  },
+  avatarRing: {
+    borderRadius: 34,
+    borderWidth: 2,
+    padding: 2,
   },
   avatarWrap: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: palette.primarySoft,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    color: palette.primaryDark,
-    fontSize: fs(18),
+    fontSize: fs(20),
     fontWeight: '700',
   },
   userBody: {
     flex: 1,
   },
+  userNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   userName: {
     color: palette.text,
     fontSize: fs(15),
     fontWeight: '700',
+    letterSpacing: -0.2,
   },
   userEmail: {
     color: palette.textMuted,
     fontSize: fs(12),
-    marginTop: spacing.xs,
+    marginTop: 3,
+  },
+  userFooter: {
+    marginTop: spacing.sm,
   },
   badgesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: 6,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 8,
     marginTop: spacing.md,
+    flexWrap: 'wrap',
+  },
+  actionChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.surfaceMuted,
+  },
+  actionChipDanger: {
+    backgroundColor: palette.dangerSoft,
+    borderColor: '#FECACA',
+  },
+  actionChipText: {
+    color: palette.primaryDark,
+    fontSize: fs(12),
+    fontWeight: '700',
+  },
+  actionChipTextDanger: {
+    color: palette.danger,
   },
   actionsColumn: {
     width: 92,
