@@ -24,6 +24,7 @@ export interface UpdateUserPayload {
   lastName?: string;
   email?: string;
   roles?: string[];
+  password?: string;
 }
 
 export function useUsers() {

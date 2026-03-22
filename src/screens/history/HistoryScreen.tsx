@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
   RefreshControl,
   StyleSheet,
   Text,
@@ -19,6 +20,7 @@ import {
   PageHeader,
   SurfaceCard,
 } from '../../components/ui/primitives';
+import { useAuth } from '../../hooks/useAuth';
 import { useDonations } from '../../hooks/useDonations';
 import { fs, palette, radius, shadows, spacing } from '../../theme/theme';
 
@@ -36,6 +38,8 @@ const formatCurrency = (value: number) => `Rs ${Number(value).toLocaleString('en
 type ViewMode = 'list' | 'grid';
 
 export default function HistoryScreen({ navigation }: any) {
+  const { user } = useAuth();
+  const isAdmin = user?.roles?.includes('admin') ?? false;
   const {
     donations,
     loading,
@@ -49,6 +53,7 @@ export default function HistoryScreen({ navigation }: any) {
   const [appliedSearch, setAppliedSearch] = useState('');
   const [filter, setFilter] = useState('All');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [deleteModal, setDeleteModal] = useState({ visible: false, id: '', name: '' });
 
   const buildFilter = useCallback(
     () => ({
@@ -80,25 +85,22 @@ export default function HistoryScreen({ navigation }: any) {
     fetchDonations({ ...buildFilter(), page: 1 }, true);
   };
 
-  const handleDelete = (id: string, name: string) => {
-    Alert.alert('Delete Donation', `Delete ${name}'s record?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await removeDonation(id);
-          } catch (error: any) {
-            Alert.alert('Error', error?.response?.data?.message || 'Failed to delete donation');
-          }
-        },
-      },
-    ]);
+  const openDeleteModal = (id: string, name: string) => {
+    setDeleteModal({ visible: true, id, name });
   };
 
-  const renderHeader = () => (
-    <View style={styles.headerWrap}>
+  const confirmDelete = async () => {
+    const { id } = deleteModal;
+    setDeleteModal({ visible: false, id: '', name: '' });
+    try {
+      await removeDonation(id);
+    } catch (error: any) {
+      Alert.alert('Error', error?.response?.data?.message || 'Failed to delete donation');
+    }
+  };
+
+  const renderStickyHeader = () => (
+    <View style={styles.stickyBar}>
       <View style={styles.filterRow}>
         <FlatList
           horizontal
@@ -172,8 +174,7 @@ export default function HistoryScreen({ navigation }: any) {
             mobileNumber: item.mobileNumber,
             qrImageUrl: item.qrImageUrl,
           })
-        }
-        onLongPress={() => handleDelete(item._id, item.donorName)}>
+        }>
         <View style={styles.cardTop}>
           <View style={[styles.cardIndex, isGrid ? styles.cardIndexGrid : null]}>
             <Text style={[styles.cardIndexText, isGrid ? styles.cardIndexTextGrid : null]}>{index + 1}</Text>
@@ -194,11 +195,22 @@ export default function HistoryScreen({ navigation }: any) {
         {item.mobileNumber ? <Text style={styles.cardMeta}>{item.mobileNumber}</Text> : null}
 
         <View style={styles.cardBottom}>
-          <Badge label={item.donationType} tone={typeTones[item.donationType] || 'default'} />
-          <Badge
-            label={item.whatsappSent ? 'Sent' : 'Pending'}
-            tone={item.whatsappSent ? 'success' : 'warning'}
-          />
+          <View style={styles.cardBadges}>
+            <Badge label={item.donationType} tone={typeTones[item.donationType] || 'default'} />
+            <Badge
+              label={item.whatsappSent ? 'Sent' : 'Pending'}
+              tone={item.whatsappSent ? 'success' : 'warning'}
+            />
+          </View>
+          {isAdmin ? (
+            <TouchableOpacity
+              activeOpacity={0.75}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              onPress={() => openDeleteModal(item._id, item.donorName)}
+              style={styles.deleteIconBtn}>
+              <Text style={styles.deleteIcon}>🗑</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </TouchableOpacity>
     );
@@ -207,6 +219,7 @@ export default function HistoryScreen({ navigation }: any) {
   if (loading && !donations.length) {
     return (
       <Page header={<PageHeader title="Donation History" subtitle="Loading receipts" compact />}>
+        {renderStickyHeader()}
         <View style={styles.center}>
           <ActivityIndicator size="large" color={palette.primary} />
         </View>
@@ -223,14 +236,15 @@ export default function HistoryScreen({ navigation }: any) {
           trailing={<Badge label={`${donations.length} shown`} tone="success" />}
         />
       }>
+      {renderStickyHeader()}
       <FlatList
         key={viewMode}
+        style={styles.list}
         data={donations}
         keyExtractor={item => item._id}
         renderItem={renderItem}
         numColumns={viewMode === 'grid' ? 2 : 1}
         columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
-        ListHeaderComponent={renderHeader}
         ListEmptyComponent={
           <EmptyState
             title="No donations found"
@@ -251,7 +265,37 @@ export default function HistoryScreen({ navigation }: any) {
         onEndReached={() => loadMore(buildFilter())}
         onEndReachedThreshold={0.35}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       />
+
+      <Modal
+        visible={deleteModal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeleteModal({ visible: false, id: '', name: '' })}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Delete Donation</Text>
+            <Text style={styles.modalText}>
+              Delete <Text style={styles.modalBold}>{deleteModal.name}</Text>'s donation record? This cannot be undone.
+            </Text>
+            <View style={styles.modalActions}>
+              <Button
+                label="Cancel"
+                variant="ghost"
+                onPress={() => setDeleteModal({ visible: false, id: '', name: '' })}
+                style={styles.modalBtn}
+              />
+              <Button
+                label="Delete"
+                variant="danger"
+                onPress={confirmDelete}
+                style={styles.modalBtn}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Page>
   );
 }
@@ -262,19 +306,73 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  list: {
+    flex: 1,
+  },
   listContent: {
     paddingHorizontal: spacing.screen,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.md,
     paddingBottom: 126,
   },
-  headerWrap: {
-    marginBottom: spacing.md,
+  stickyBar: {
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+    backgroundColor: palette.background,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.border,
   },
   filterRow: {
     marginBottom: spacing.md,
   },
   filterContent: {
     paddingRight: spacing.md,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.46)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.screen,
+  },
+  modalBox: {
+    backgroundColor: palette.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    width: '100%',
+    maxWidth: 380,
+    ...shadows.lg,
+  },
+  modalTitle: {
+    color: palette.text,
+    fontSize: fs(18),
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+  },
+  modalText: {
+    color: palette.textMuted,
+    fontSize: fs(14),
+    lineHeight: 21,
+    marginBottom: spacing.xl,
+  },
+  modalBold: {
+    color: palette.text,
+    fontWeight: '700',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  modalBtn: {
+    flex: 1,
+    minHeight: 44,
+  },
+  deleteIconBtn: {
+    padding: 4,
+  },
+  deleteIcon: {
+    fontSize: fs(16),
+    color: '#D32F2F',
   },
   filterChip: {
     minHeight: 38,
@@ -412,9 +510,14 @@ const styles = StyleSheet.create({
   cardBottom: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+  },
+  cardBadges: {
+    flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginTop: spacing.md,
+    flex: 1,
   },
   footerLoader: {
     paddingVertical: spacing.lg,

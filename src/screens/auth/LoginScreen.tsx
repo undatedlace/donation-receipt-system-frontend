@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
   TouchableOpacity,
+  Text,
   View,
 } from 'react-native';
 import {
-  Badge,
   Button,
   FieldGroup,
   InputField,
@@ -26,6 +26,7 @@ export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -54,14 +55,11 @@ export default function LoginScreen({ navigation }: any) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
-            <Badge label="Donation Desk" tone="success" />
-            <View style={styles.brandMark}>
-              <Text style={styles.brandMarkText}>ND</Text>
-            </View>
-            <Text style={styles.heroTitle}>Noori Donation</Text>
-            <Text style={styles.heroSubtitle}>
-              Sign in to record donations, generate receipts, and share them without leaving the app.
-            </Text>
+            <Image
+              source={require('../../assets/sdi_logo.png')}
+              style={styles.sdiLogo}
+              resizeMode="contain"
+            />
           </View>
 
           <SurfaceCard style={styles.formCard}>
@@ -81,12 +79,22 @@ export default function LoginScreen({ navigation }: any) {
             </FieldGroup>
 
             <FieldGroup label="Password">
-              <InputField
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Enter your password"
-                secureTextEntry
-              />
+              <View style={styles.passwordWrapper}>
+                <InputField
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Enter your password"
+                  secureTextEntry={!showPassword}
+                  style={styles.passwordInput}
+                />
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  onPress={() => setShowPassword(v => !v)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={styles.eyeButton}>
+                  <Text style={styles.eyeText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                </TouchableOpacity>
+              </View>
             </FieldGroup>
 
             <Button label="Sign In" loading={loading} onPress={handleLogin} style={styles.primaryButton} />
@@ -173,6 +181,26 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     marginTop: spacing.sm,
+  },
+  passwordWrapper: {
+    position: 'relative',
+  },
+  passwordInput: {
+    paddingRight: 64,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  eyeText: {
+    color: palette.primary,
+    fontSize: fs(13),
+    fontWeight: '700',
   },
   linkButton: {
     alignItems: 'center',

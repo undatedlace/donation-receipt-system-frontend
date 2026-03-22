@@ -116,6 +116,14 @@ export default function UsersScreen() {
   const [editRoles, setEditRoles] = useState<string[]>([]);
   const [editLoading, setEditLoading] = useState(false);
 
+  const [pwdVisible, setPwdVisible] = useState(false);
+  const [pwdTarget, setPwdTarget] = useState<UserItem | null>(null);
+  const [newPwd, setNewPwd] = useState('');
+  const [confirmPwd, setConfirmPwd] = useState('');
+  const [pwdLoading, setPwdLoading] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+
   useFocusEffect(
     useCallback(() => {
       fetchUsers();
@@ -176,6 +184,39 @@ export default function UsersScreen() {
       Alert.alert('Error', error?.response?.data?.message ?? 'Failed to update user');
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const openChangePwd = (user: UserItem) => {
+    setPwdTarget(user);
+    setNewPwd('');
+    setConfirmPwd('');
+    setShowNewPwd(false);
+    setShowConfirmPwd(false);
+    setPwdVisible(true);
+  };
+
+  const handleChangePwd = async () => {
+    if (!newPwd.trim()) {
+      return Alert.alert('Validation', 'Password cannot be empty.');
+    }
+    if (newPwd.length < 6) {
+      return Alert.alert('Validation', 'Password must be at least 6 characters.');
+    }
+    if (newPwd !== confirmPwd) {
+      return Alert.alert('Validation', 'Passwords do not match.');
+    }
+    if (!pwdTarget) { return; }
+
+    setPwdLoading(true);
+    try {
+      await editUser(pwdTarget._id, { password: newPwd });
+      setPwdVisible(false);
+      Alert.alert('Success', `Password updated for ${pwdTarget.firstName} ${pwdTarget.lastName}.`);
+    } catch (error: any) {
+      Alert.alert('Error', error?.response?.data?.message ?? 'Failed to update password');
+    } finally {
+      setPwdLoading(false);
     }
   };
 
@@ -258,6 +299,7 @@ export default function UsersScreen() {
         {canWrite ? (
           <View style={styles.actionsColumn}>
             <Button label="Edit" variant="secondary" onPress={() => openEdit(item)} style={styles.inlineButton} />
+            <Button label="Pwd" variant="ghost" onPress={() => openChangePwd(item)} style={styles.inlineButton} />
             <Button label="Delete" variant="danger" onPress={() => handleDelete(item)} style={styles.inlineButton} />
           </View>
         ) : null}
@@ -377,6 +419,58 @@ export default function UsersScreen() {
           label="Cancel"
           variant="ghost"
           onPress={() => setEditVisible(false)}
+          style={styles.sheetSecondaryButton}
+        />
+      </UserSheet>
+
+      <UserSheet visible={pwdVisible} title="Change Password" onClose={() => setPwdVisible(false)}>
+        <Text style={styles.sheetSubtext}>
+          Set a new password for {pwdTarget?.firstName} {pwdTarget?.lastName}.
+        </Text>
+
+        <FieldGroup label="New Password">
+          <View style={styles.pwdRow}>
+            <InputField
+              value={newPwd}
+              onChangeText={setNewPwd}
+              placeholder="Min 6 characters"
+              secureTextEntry={!showNewPwd}
+              style={styles.pwdInput}
+            />
+            <TouchableOpacity
+              activeOpacity={0.88}
+              onPress={() => setShowNewPwd(v => !v)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={styles.pwdEye}>
+              <Text style={styles.pwdEyeText}>{showNewPwd ? 'Hide' : 'Show'}</Text>
+            </TouchableOpacity>
+          </View>
+        </FieldGroup>
+
+        <FieldGroup label="Confirm Password">
+          <View style={styles.pwdRow}>
+            <InputField
+              value={confirmPwd}
+              onChangeText={setConfirmPwd}
+              placeholder="Repeat password"
+              secureTextEntry={!showConfirmPwd}
+              style={styles.pwdInput}
+            />
+            <TouchableOpacity
+              activeOpacity={0.88}
+              onPress={() => setShowConfirmPwd(v => !v)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={styles.pwdEye}>
+              <Text style={styles.pwdEyeText}>{showConfirmPwd ? 'Hide' : 'Show'}</Text>
+            </TouchableOpacity>
+          </View>
+        </FieldGroup>
+
+        <Button label="Update Password" loading={pwdLoading} onPress={handleChangePwd} style={styles.sheetButton} />
+        <Button
+          label="Cancel"
+          variant="ghost"
+          onPress={() => setPwdVisible(false)}
           style={styles.sheetSecondaryButton}
         />
       </UserSheet>
@@ -565,5 +659,31 @@ const styles = StyleSheet.create({
   },
   sheetSecondaryButton: {
     marginTop: spacing.sm,
+  },
+  sheetSubtext: {
+    color: palette.textMuted,
+    fontSize: fs(13),
+    lineHeight: 19,
+    marginBottom: spacing.lg,
+  },
+  pwdRow: {
+    position: 'relative',
+  },
+  pwdInput: {
+    paddingRight: 64,
+  },
+  pwdEye: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  pwdEyeText: {
+    color: palette.primary,
+    fontSize: fs(13),
+    fontWeight: '700',
   },
 });
