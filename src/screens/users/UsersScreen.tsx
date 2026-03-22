@@ -41,7 +41,7 @@ interface UserItem {
   roles: string[];
 }
 
-const emptyAdd = { firstName: '', lastName: '', email: '', password: '', roles: [] as string[] };
+const emptyAdd = { firstName: '', lastName: '', email: '', password: '', roles: [] as string[], zone: '', branch: '' };
 
 function RoleSelector({
   selected,
@@ -131,7 +131,7 @@ export default function UsersScreen() {
   );
 
   const handleAdd = async () => {
-    const { firstName, lastName, email, password, roles } = addForm;
+    const { firstName, lastName, email, password, roles, zone, branch } = addForm;
 
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()) {
       return Alert.alert('Validation', 'All fields are required.');
@@ -144,7 +144,7 @@ export default function UsersScreen() {
     setAddLoading(true);
 
     try {
-      await addUser({ firstName, lastName, email, password, roles });
+      await addUser({ firstName, lastName, email, password, roles, zone, branch });
       setAddVisible(false);
       setAddForm({ ...emptyAdd });
     } catch (error: any) {
@@ -382,6 +382,22 @@ export default function UsersScreen() {
             onChangeText={value => setAddForm(form => ({ ...form, password: value }))}
             placeholder="Password"
             secureTextEntry
+          />
+        </FieldGroup>
+
+        <FieldGroup label="Zone">
+          <InputField
+            value={addForm.zone}
+            onChangeText={value => setAddForm(form => ({ ...form, zone: value }))}
+            placeholder="e.g. Zone A, North Zone"
+          />
+        </FieldGroup>
+
+        <FieldGroup label="Branch">
+          <InputField
+            value={addForm.branch}
+            onChangeText={value => setAddForm(form => ({ ...form, branch: value }))}
+            placeholder="e.g. Mira Road Branch"
           />
         </FieldGroup>
 

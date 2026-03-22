@@ -107,6 +107,8 @@ export default function DonationFormScreen({ navigation }: any) {
     donorName: '',
     mobileNumber: '',
     address: '',
+    zone: 'Tooba Zone',
+    branch: 'Jogeshwari West',
     donationType: '',
     mode: '',
     boxNumber: '',
@@ -177,6 +179,8 @@ export default function DonationFormScreen({ navigation }: any) {
       donorName: '',
       mobileNumber: '',
       address: '',
+      zone: 'Tooba Zone',
+      branch: 'Jogeshwari West',
       donationType: '',
       mode: '',
       boxNumber: '',
@@ -303,6 +307,22 @@ export default function DonationFormScreen({ navigation }: any) {
             placeholder="Full address"
             multiline
             numberOfLines={4}
+          />
+        </FieldGroup>
+
+        <FieldGroup label="Zone">
+          <InputField
+            value={form.zone}
+            onChangeText={value => setValue('zone', value)}
+            placeholder="e.g. Zone A, North Zone"
+          />
+        </FieldGroup>
+
+        <FieldGroup label="Branch">
+          <InputField
+            value={form.branch}
+            onChangeText={value => setValue('branch', value)}
+            placeholder="e.g. Mira Road Branch"
           />
         </FieldGroup>
       </SurfaceCard>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -154,14 +154,21 @@ export default function AppNavigator() {
   if (isLoading) {
     return (
       <View style={styles.loadingScreen}>
-        <ActivityIndicator color="#FFFFFF" size="large" />
+        <View style={styles.loaderWrap}>
+          <ActivityIndicator color="#FFFFFF" size="large" style={styles.loaderSpinner} />
+          <Image
+            source={require('../assets/sdi_logo.png')}
+            style={styles.loaderLogo}
+            resizeMode="contain"
+          />
+        </View>
       </View>
     );
   }
 
   return (
     <NavigationContainer theme={navigationTheme}>
-      <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.background } }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
         {!token ? (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
@@ -185,6 +192,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  loaderWrap: {
+    width: 88,
+    height: 88,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loaderLogo: {
+    width: 52,
+    height: 52,
+    position: 'absolute',
+  },
+  loaderSpinner: {
+    width: 88,
+    height: 88,
+    transform: [{ scaleX: 2.4 }, { scaleY: 2.4 }],
+  },
   tabBar: {
     position: 'absolute',
     left: 14,
@@ -197,6 +220,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: Platform.OS === 'ios' ? 16 : 10,
     paddingHorizontal: 8,
+    marginHorizontal: 16,
     elevation: 0,
     shadowColor: palette.shadow,
     shadowOpacity: 0.18,
@@ -205,7 +229,7 @@ const styles = StyleSheet.create({
   },
   tabBarItem: {
     marginHorizontal: 2,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
   },
   tabIconWrap: {
     marginBottom: 2,

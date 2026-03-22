@@ -80,7 +80,7 @@ export const navigationTheme: Theme = {
   dark: false,
   colors: {
     primary:      palette.primary,
-    background:   palette.background,
+    background:   'transparent',
     card:         palette.surface,
     text:         palette.text,
     border:       palette.border,

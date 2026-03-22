@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Dimensions,
   Image,
+  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,11 +17,9 @@ import {
   Button,
   FieldGroup,
   InputField,
-  Page,
-  SurfaceCard,
 } from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
-import { fs, palette, shadows, spacing } from '../../theme/theme';
+import { fs, palette, spacing } from '../../theme/theme';
 
 export default function LoginScreen({ navigation }: any) {
   const { login } = useAuth();
@@ -48,12 +48,17 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   return (
-    <Page style={styles.page}>
-      <StatusBar barStyle="light-content" backgroundColor={palette.primary} />
+    // <ImageBackground
+    //   source={require('../../assets/bg_watermark.png')}
+    //   style={styles.page}
+    //   resizeMode="cover">
+    <View style={styles.page}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <View style={{flex: 1, height: Dimensions.get('window').height}}>
           <View style={styles.hero}>
             <Image
               source={require('../../assets/sdi_logo.png')}
@@ -62,12 +67,7 @@ export default function LoginScreen({ navigation }: any) {
             />
           </View>
 
-          <SurfaceCard style={styles.formCard}>
-            <View style={styles.formHeader}>
-              <Text style={styles.formTitle}>Welcome Back</Text>
-              <Text style={styles.formSubtitle}>Use your registered email address to continue.</Text>
-            </View>
-
+          <View style={styles.formCard}>
             <FieldGroup label="Email Address">
               <InputField
                 value={email}
@@ -98,86 +98,43 @@ export default function LoginScreen({ navigation }: any) {
             </FieldGroup>
 
             <Button label="Sign In" loading={loading} onPress={handleLogin} style={styles.primaryButton} />
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => navigation.navigate('Register')}
-              style={styles.linkButton}>
-              <Text style={styles.linkText}>Create a new account</Text>
-            </TouchableOpacity>
-          </SurfaceCard>
+          </View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </Page>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   page: {
-    backgroundColor: palette.primary,
+    flex: 1,
+    height: Dimensions.get('window').height
   },
   flex: {
     flex: 1,
-    backgroundColor: palette.primary,
+    height: Dimensions.get('window').height
   },
   content: {
     flexGrow: 1,
     padding: spacing.screen,
-    justifyContent: 'center',
+    paddingTop: 0,
+    justifyContent: 'flex-start',
+    height: Dimensions.get('window').height
+
   },
   hero: {
     alignItems: 'center',
-    paddingTop: spacing.xxl,
+    paddingTop: 72,
     paddingBottom: spacing.xl,
+    marginTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44,
   },
-  brandMark: {
+  sdiLogo: {
     width: 88,
     height: 88,
-    borderRadius: 44,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.78)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.lg,
-  },
-  brandMarkText: {
-    color: '#FFFFFF',
-    fontSize: fs(30),
-    fontWeight: '700',
-    letterSpacing: -1,
-  },
-  heroTitle: {
-    color: '#FFFFFF',
-    fontSize: fs(28),
-    fontWeight: '700',
-    letterSpacing: -0.8,
-    marginTop: spacing.lg,
-  },
-  heroSubtitle: {
-    color: 'rgba(255,255,255,0.78)',
-    fontSize: fs(14),
-    lineHeight: 21,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.md,
   },
   formCard: {
-    ...shadows.lg,
-  },
-  formHeader: {
-    marginBottom: spacing.lg,
-  },
-  formTitle: {
-    color: palette.text,
-    fontSize: fs(24),
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
-  formSubtitle: {
-    color: palette.textMuted,
-    fontSize: fs(14),
-    lineHeight: 21,
-    marginTop: spacing.xs,
+    paddingTop: spacing.sm,
   },
   primaryButton: {
     marginTop: spacing.sm,
@@ -200,15 +157,6 @@ const styles = StyleSheet.create({
   eyeText: {
     color: palette.primary,
     fontSize: fs(13),
-    fontWeight: '700',
-  },
-  linkButton: {
-    alignItems: 'center',
-    marginTop: spacing.lg,
-  },
-  linkText: {
-    color: palette.primary,
-    fontSize: fs(14),
     fontWeight: '700',
   },
 });

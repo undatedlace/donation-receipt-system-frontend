@@ -17,6 +17,8 @@ export interface CreateUserPayload {
   email: string;
   password: string;
   roles: string[];
+  zone?: string;
+  branch?: string;
 }
 
 export interface UpdateUserPayload {

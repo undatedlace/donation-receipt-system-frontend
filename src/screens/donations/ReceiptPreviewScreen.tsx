@@ -403,11 +403,11 @@ const styles = StyleSheet.create({
   },
   secondaryRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     gap: spacing.sm,
   },
   halfBtn: {
     flex: 1,
-    minWidth: 100,
+    minWidth: 0,
   },
 });
