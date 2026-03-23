@@ -26,7 +26,10 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { useDonations } from '../../hooks/useDonations';
 import { generateReceipt } from '../../services/api';
-import { fs, palette, radius, shadows, spacing } from '../../theme/theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { fs, type Palette, radius, spacing } from '../../theme/theme';
+
+type ShadowRecord = ReturnType<typeof import('../../theme/theme').createShadows>;
 
 const TYPES = ['All', 'Zakat', 'Fitra', 'Atiyaat', 'Noori Box'];
 const DONATION_TYPES = ['Zakat', 'Fitra', 'Atiyaat', 'Noori Box'];
@@ -61,6 +64,8 @@ interface SelectModalProps {
 }
 
 function SelectModal({ visible, options, onSelect, onClose, title }: SelectModalProps) {
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.selectOverlay}>
@@ -87,6 +92,8 @@ function SelectModal({ visible, options, onSelect, onClose, title }: SelectModal
 }
 
 export default function HistoryScreen({ navigation }: any) {
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
   const { user } = useAuth();
   const isAdmin = user?.roles?.includes('admin') ?? false;
   const {
@@ -716,7 +723,8 @@ export default function HistoryScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(p: Palette, shadows: ShadowRecord) {
+  return StyleSheet.create({
   center: {
     flex: 1,
     alignItems: 'center',
@@ -734,9 +742,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
-    backgroundColor: palette.background,
+    backgroundColor: p.background,
     borderBottomWidth: 1,
-    borderBottomColor: palette.border,
+    borderBottomColor: p.border,
   },
   // ── Search ──
   searchWrap: {
@@ -759,7 +767,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   searchClearText: {
-    color: palette.textSoft,
+    color: p.textSoft,
     fontSize: fs(13),
     fontWeight: '700',
   },
@@ -773,7 +781,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   filterRowLabel: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(11),
     fontWeight: '700',
     width: 44,
@@ -790,15 +798,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: palette.border,
-    backgroundColor: palette.surface,
+    borderColor: p.border,
+    backgroundColor: p.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
   },
   filterChipActive: {
-    backgroundColor: palette.primary,
-    borderColor: palette.primary,
+    backgroundColor: p.primary,
+    borderColor: p.primary,
   },
   filterChipActiveMode: {
     backgroundColor: '#1D4ED8',
@@ -813,7 +821,7 @@ const styles = StyleSheet.create({
     borderColor: '#B45309',
   },
   filterText: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(12),
     fontWeight: '700',
   },
@@ -828,7 +836,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   viewLabel: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(12),
     fontWeight: '600',
   },
@@ -841,29 +849,29 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: palette.border,
-    backgroundColor: palette.surface,
+    borderColor: p.border,
+    backgroundColor: p.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   viewButtonActive: {
-    backgroundColor: palette.primarySoft,
-    borderColor: palette.primary,
+    backgroundColor: p.primarySoft,
+    borderColor: p.primary,
   },
   viewButtonText: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(12),
     fontWeight: '700',
   },
   viewButtonTextActive: {
-    color: palette.primaryDark,
+    color: p.primaryDark,
   },
   // ── List card ──
   listCard: {
     flexDirection: 'row',
-    backgroundColor: palette.surface,
+    backgroundColor: p.surface,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: p.border,
     borderRadius: radius.lg,
     marginBottom: spacing.md,
     overflow: 'hidden',
@@ -892,31 +900,31 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   listDonorName: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(15),
     fontWeight: '700',
     letterSpacing: -0.2,
   },
   listMeta: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(12),
     marginTop: 2,
   },
   listAmount: {
-    color: palette.primary,
+    color: p.primary,
     fontSize: fs(16),
     fontWeight: '800',
     letterSpacing: -0.5,
   },
   listReceiptNo: {
-    color: palette.textSoft,
+    color: p.textSoft,
     fontSize: fs(11),
     marginTop: 2,
     fontWeight: '600',
   },
   listDivider: {
     height: 1,
-    backgroundColor: palette.border,
+    backgroundColor: p.border,
     marginVertical: spacing.sm,
   },
   listBottomRow: {
@@ -932,7 +940,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listDate: {
-    color: palette.textSoft,
+    color: p.textSoft,
     fontSize: fs(11),
     marginLeft: 2,
   },
@@ -957,9 +965,9 @@ const styles = StyleSheet.create({
   // ── Grid card ──
   gridCard: {
     width: '48%',
-    backgroundColor: palette.surface,
+    backgroundColor: p.surface,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: p.border,
     borderRadius: radius.lg,
     marginBottom: spacing.md,
     overflow: 'hidden',
@@ -981,20 +989,20 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   gridDonorName: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(13),
     fontWeight: '700',
     letterSpacing: -0.2,
     marginBottom: 4,
   },
   gridAmount: {
-    color: palette.primary,
+    color: p.primary,
     fontSize: fs(15),
     fontWeight: '800',
     letterSpacing: -0.5,
   },
   gridMeta: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(10),
     marginTop: 3,
   },
@@ -1034,7 +1042,7 @@ const styles = StyleSheet.create({
     padding: spacing.screen,
   },
   modalBox: {
-    backgroundColor: palette.surface,
+    backgroundColor: p.surface,
     borderRadius: radius.lg,
     padding: spacing.xl,
     width: '100%',
@@ -1042,19 +1050,19 @@ const styles = StyleSheet.create({
     ...shadows.lg,
   },
   modalTitle: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(18),
     fontWeight: '700',
     marginBottom: spacing.sm,
   },
   modalText: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(14),
     lineHeight: 21,
     marginBottom: spacing.xl,
   },
   modalBold: {
-    color: palette.text,
+    color: p.text,
     fontWeight: '700',
   },
   modalActions: {
@@ -1076,15 +1084,15 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: radius.md,
-    backgroundColor: palette.primarySoft,
+    backgroundColor: p.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: palette.accentSoft,
+    borderColor: p.accentSoft,
   },
   editIconText: {
     fontSize: 15,
-    color: palette.primaryDark,
+    color: p.primaryDark,
   },
   // ── Edit buttons (grid) ──
   gridActions: {
@@ -1095,12 +1103,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: radius.sm,
-    backgroundColor: palette.primarySoft,
+    backgroundColor: p.primarySoft,
     borderWidth: 1,
-    borderColor: palette.accentSoft,
+    borderColor: p.accentSoft,
   },
   editBtnText: {
-    color: palette.primaryDark,
+    color: p.primaryDark,
     fontSize: 10,
     fontWeight: '700',
   },
@@ -1111,7 +1119,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   selectSheet: {
-    backgroundColor: palette.surface,
+    backgroundColor: p.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     paddingBottom: 40,
@@ -1121,13 +1129,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: palette.borderStrong,
+    backgroundColor: p.borderStrong,
     alignSelf: 'center',
     marginTop: 10,
     marginBottom: 8,
   },
   selectTitle: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(16),
     fontWeight: '700',
     paddingHorizontal: spacing.screen,
@@ -1137,10 +1145,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.screen,
     borderBottomWidth: 1,
-    borderBottomColor: palette.border,
+    borderBottomColor: p.border,
   },
   selectItemText: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(15),
   },
   // ── Edit Donation Modal ──
@@ -1150,7 +1158,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   editSheet: {
-    backgroundColor: palette.surface,
+    backgroundColor: p.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     maxHeight: '92%',
@@ -1161,13 +1169,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: palette.borderStrong,
+    backgroundColor: p.borderStrong,
     alignSelf: 'center',
     marginTop: 10,
     marginBottom: 8,
   },
   editSheetTitle: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(18),
     fontWeight: '700',
     marginBottom: spacing.md,
@@ -1178,21 +1186,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     height: 48,
     borderWidth: 1.5,
-    borderColor: palette.border,
+    borderColor: p.border,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
-    backgroundColor: palette.surfaceMuted,
+    backgroundColor: p.surfaceMuted,
   },
   editPickerValue: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(14),
     flex: 1,
   },
   editPickerPlaceholder: {
-    color: palette.textSoft,
+    color: p.textSoft,
   },
   editPickerArrow: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: 20,
     fontWeight: '300',
   },
@@ -1203,4 +1211,5 @@ const styles = StyleSheet.create({
   editBtn2: {
     minHeight: 44,
   },
-});
+  });
+}

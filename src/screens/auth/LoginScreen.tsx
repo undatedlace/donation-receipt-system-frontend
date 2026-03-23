@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Dimensions,
   Image,
-  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,14 +18,20 @@ import {
   InputField,
 } from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
-import { fs, palette, spacing } from '../../theme/theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { fs, type Palette, spacing } from '../../theme/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LoginScreen({ navigation }: any) {
   const { login } = useAuth();
+  const { palette, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const styles = useMemo(() => makeStyles(palette, insets.top), [palette, insets.top]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -48,12 +53,12 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   return (
-    // <ImageBackground
-    //   source={require('../../assets/bg_watermark.png')}
-    //   style={styles.page}
-    //   resizeMode="cover">
     <View style={styles.page}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -106,57 +111,59 @@ export default function LoginScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  page: {
-    flex: 1,
-    height: Dimensions.get('window').height
-  },
-  flex: {
-    flex: 1,
-    height: Dimensions.get('window').height
-  },
-  content: {
-    flexGrow: 1,
-    padding: spacing.screen,
-    paddingTop: 0,
-    justifyContent: 'flex-start',
-    height: Dimensions.get('window').height
-
-  },
-  hero: {
-    alignItems: 'center',
-    paddingTop: 72,
-    paddingBottom: spacing.xl,
-    marginTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44,
-  },
-  sdiLogo: {
-    width: 88,
-    height: 88,
-  },
-  formCard: {
-    paddingTop: spacing.sm,
-  },
-  primaryButton: {
-    marginTop: spacing.sm,
-  },
-  passwordWrapper: {
-    position: 'relative',
-  },
-  passwordInput: {
-    paddingRight: 64,
-  },
-  eyeButton: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.md,
-  },
-  eyeText: {
-    color: palette.primary,
-    fontSize: fs(13),
-    fontWeight: '700',
-  },
-});
+function makeStyles(p: Palette, topInset: number = 0) {
+  return StyleSheet.create({
+    page: {
+      flex: 1,
+      height: Dimensions.get('window').height,
+      backgroundColor: p.background,
+    },
+    flex: {
+      flex: 1,
+      height: Dimensions.get('window').height,
+    },
+    content: {
+      flexGrow: 1,
+      padding: spacing.screen,
+      paddingTop: 0,
+      justifyContent: 'flex-start',
+      height: Dimensions.get('window').height,
+    },
+    hero: {
+      alignItems: 'center',
+      paddingTop: 72,
+      paddingBottom: spacing.xl,
+      marginTop: topInset > 0 ? topInset : (Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44),
+    },
+    sdiLogo: {
+      width: 88,
+      height: 88,
+    },
+    formCard: {
+      paddingTop: spacing.sm,
+    },
+    primaryButton: {
+      marginTop: spacing.sm,
+    },
+    passwordWrapper: {
+      position: 'relative',
+    },
+    passwordInput: {
+      paddingRight: 64,
+    },
+    eyeButton: {
+      position: 'absolute',
+      right: 0,
+      top: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing.md,
+    },
+    eyeText: {
+      color: p.primary,
+      fontSize: fs(13),
+      fontWeight: '700',
+    },
+  });
+}

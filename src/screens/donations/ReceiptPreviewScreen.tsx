@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import {
   Badge,
@@ -20,12 +21,16 @@ import {
 import { generateReceipt, getDonation } from '../../services/api';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { useAuth } from '../../hooks/useAuth';
-import { fs, palette, spacing } from '../../theme/theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { fs, type Palette, spacing } from '../../theme/theme';
 
 const toViewerUrl = (url: string) =>
   `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
 
 export default function ReceiptPreviewScreen({ navigation, route }: any) {
+  const { palette } = useTheme();
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(palette), [palette]);
   const { donationId, receiptUrl: paramReceiptUrl, receiptNumber: paramReceiptNumber, donorName: paramDonorName, mobileNumber: paramMobileNumber, qrImageUrl: paramQrImageUrl } = route.params || {};
   const { sending, send } = useWhatsApp();
   const { user } = useAuth();
@@ -123,7 +128,7 @@ export default function ReceiptPreviewScreen({ navigation, route }: any) {
   return (
     <View style={styles.root}>
       {/* ── Header ── */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: spacing.lg + insets.top }]}>
         <TouchableOpacity activeOpacity={0.88} style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Text style={styles.backBtnText}>{'‹'}</Text>
         </TouchableOpacity>
@@ -244,10 +249,11 @@ export default function ReceiptPreviewScreen({ navigation, route }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(p: Palette) {
+  return StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: palette.primary,
+    backgroundColor: p.primary,
   },
   // ── Header ──
   header: {
@@ -257,7 +263,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: spacing.lg,
     gap: spacing.md,
-    backgroundColor: palette.primary,
+    backgroundColor: p.primary,
   },
   backBtn: {
     width: 38,
@@ -290,18 +296,18 @@ const styles = StyleSheet.create({
   // ── Body ──
   center: {
     flex: 1,
-    backgroundColor: palette.background,
+    backgroundColor: p.background,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.md,
   },
   loadingText: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(14),
   },
   scroll: {
     flex: 1,
-    backgroundColor: palette.background,
+    backgroundColor: p.background,
   },
   scrollContent: {
     paddingHorizontal: spacing.screen,
@@ -324,20 +330,20 @@ const styles = StyleSheet.create({
     minWidth: 80,
   },
   infoLabel: {
-    color: palette.textSoft,
+    color: p.textSoft,
     fontSize: fs(11),
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   infoValue: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(15),
     fontWeight: '700',
     marginTop: 3,
   },
   infoValueAccent: {
-    color: palette.primary,
+    color: p.primary,
     fontSize: fs(15),
     fontWeight: '700',
     marginTop: 3,
@@ -348,7 +354,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   sectionTitle: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(13),
     fontWeight: '700',
     paddingHorizontal: spacing.lg,
@@ -360,17 +366,17 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1,
-    backgroundColor: palette.surfaceStrong,
+    backgroundColor: p.surfaceStrong,
   },
   webviewLoader: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: palette.surfaceStrong,
+    backgroundColor: p.surfaceStrong,
     gap: spacing.md,
   },
   webviewLoaderText: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(13),
   },
   fallbackWrap: {
@@ -379,7 +385,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   fallbackText: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(13),
     textAlign: 'center',
     lineHeight: 20,
@@ -395,7 +401,7 @@ const styles = StyleSheet.create({
   qrImage: {
     width: '100%',
     height: 260,
-    backgroundColor: palette.surfaceMuted,
+    backgroundColor: p.surfaceMuted,
   },
   // ── Actions ──
   actionsCard: {
@@ -410,4 +416,5 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-});
+  });
+}

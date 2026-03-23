@@ -4,7 +4,7 @@ import { API_BASE_URL } from '../config/env';
 
 export const BASE_URL = API_BASE_URL;
 
-const api = axios.create({ baseURL: BASE_URL });
+const api = axios.create({ baseURL: BASE_URL, timeout: 15000 }); // 15 s timeout
 
 // Attach JWT token to every request
 api.interceptors.request.use(async (config) => {

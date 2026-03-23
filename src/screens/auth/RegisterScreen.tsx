@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -19,9 +19,14 @@ import {
   SurfaceCard,
 } from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
-import { fs, palette, shadows, spacing } from '../../theme/theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { fs, type Palette, spacing } from '../../theme/theme';
+
+type ShadowRecord = ReturnType<typeof import('../../theme/theme').createShadows>;
 
 export default function RegisterScreen({ navigation }: any) {
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
   const { register } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -115,13 +120,14 @@ export default function RegisterScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(p: Palette, shadows: ShadowRecord) {
+  return StyleSheet.create({
   page: {
-    backgroundColor: palette.primary,
+    backgroundColor: p.primary,
   },
   flex: {
     flex: 1,
-    backgroundColor: palette.primary,
+    backgroundColor: p.primary,
   },
   content: {
     flexGrow: 1,
@@ -171,13 +177,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   formTitle: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(24),
     fontWeight: '700',
     letterSpacing: -0.5,
   },
   formSubtitle: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(14),
     lineHeight: 21,
     marginTop: spacing.xs,
@@ -190,8 +196,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   linkText: {
-    color: palette.primary,
+    color: p.primary,
     fontSize: fs(14),
     fontWeight: '700',
   },
-});
+  });
+}

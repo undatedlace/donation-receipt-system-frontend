@@ -9,7 +9,7 @@ export const fs = (size: number): number => {
   return Math.round(PixelRatio.roundToNearestPixel(scaled));
 };
 
-export const palette = {
+export const lightPalette = {
   background:     '#FFFFFF',
   surface:        '#FFFFFF',
   surfaceMuted:   '#F5F8F6',
@@ -40,6 +40,42 @@ export const palette = {
   overlay:        'rgba(4, 24, 19, 0.5)',
 };
 
+export const darkPalette = {
+  background:     '#0D1A16',
+  surface:        '#152019',
+  surfaceMuted:   '#1C2B24',
+  surfaceStrong:  '#223630',
+  border:         '#2A3F38',
+  borderStrong:   '#355149',
+  text:           '#E4F1EB',
+  textMuted:      '#7EADA0',
+  textSoft:       '#4E7268',
+
+  // ── Green brand ──
+  primary:        '#045E53',
+  primaryDark:    '#03473F',
+  primarySoft:    '#122E28',
+  primarySurface: '#183B33',
+  accent:         '#2B8A6B',
+  accentSoft:     '#163B2D',
+
+  // ── Semantic ──
+  warning:        '#F59E0B',
+  warningSoft:    '#271B07',
+  info:           '#14B8A6',
+  infoSoft:       '#0A2824',
+  danger:         '#F87171',
+  dangerSoft:     '#2A1010',
+
+  shadow:         '#000000',
+  overlay:        'rgba(0, 0, 0, 0.7)',
+};
+
+/** Default (light) palette — kept for static / non-themed usage */
+export const palette = lightPalette;
+
+export type Palette = typeof lightPalette;
+
 export const radius = {
   sm:   12,
   md:   16,
@@ -58,50 +94,60 @@ export const spacing = {
   screen: 22,
 };
 
-const iosShadow = (opacity: number, radiusValue: number, height: number) => ({
-  shadowColor: palette.shadow,
+type ShadowStyle = { elevation?: number; shadowColor?: string; shadowOpacity?: number; shadowRadius?: number; shadowOffset?: { width: number; height: number } };
+
+const iosShadow = (shadowColor: string, opacity: number, radiusValue: number, height: number): ShadowStyle => ({
+  shadowColor,
   shadowOpacity: opacity,
   shadowRadius: radiusValue,
   shadowOffset: { width: 0, height },
 });
 
-type ShadowStyle = { elevation?: number; shadowColor?: string; shadowOpacity?: number; shadowRadius?: number; shadowOffset?: { width: number; height: number } };
-
 const shadow = (ios: ShadowStyle, android: ShadowStyle): ShadowStyle =>
   Platform.OS === 'android' ? android : ios;
 
-export const shadows: Record<'sm' | 'md' | 'lg', ShadowStyle> = {
-  sm: shadow(iosShadow(0.08, 8, 3),   { elevation: 2 }),
-  md: shadow(iosShadow(0.12, 16, 8),  { elevation: 4 }),
-  lg: shadow(iosShadow(0.16, 22, 12), { elevation: 8 }),
-};
+export function createShadows(p: Palette): Record<'sm' | 'md' | 'lg', ShadowStyle> {
+  return {
+    sm: shadow(iosShadow(p.shadow, 0.08, 8,  3),  { elevation: 2 }),
+    md: shadow(iosShadow(p.shadow, 0.12, 16, 8),  { elevation: 4 }),
+    lg: shadow(iosShadow(p.shadow, 0.16, 22, 12), { elevation: 8 }),
+  };
+}
 
-export const navigationTheme: Theme = {
-  dark: false,
-  colors: {
-    primary:      palette.primary,
-    background:   'transparent',
-    card:         palette.surface,
-    text:         palette.text,
-    border:       palette.border,
-    notification: palette.accent,
-  },
-  fonts: {
-    regular: {
-      fontFamily: Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' }),
-      fontWeight: '400',
+/** Static shadows for light mode — used where dynamic theme isn't available */
+export const shadows = createShadows(lightPalette);
+
+export function createNavigationTheme(p: Palette, dark: boolean): Theme {
+  return {
+    dark,
+    colors: {
+      primary:      p.primary,
+      background:   'transparent',
+      card:         p.surface,
+      text:         p.text,
+      border:       p.border,
+      notification: p.accent,
     },
-    medium: {
-      fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-medium', default: 'System' }),
-      fontWeight: '500',
+    fonts: {
+      regular: {
+        fontFamily: Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' }),
+        fontWeight: '400',
+      },
+      medium: {
+        fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-medium', default: 'System' }),
+        fontWeight: '500',
+      },
+      bold: {
+        fontFamily: Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' }),
+        fontWeight: '700',
+      },
+      heavy: {
+        fontFamily: Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' }),
+        fontWeight: '800',
+      },
     },
-    bold: {
-      fontFamily: Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' }),
-      fontWeight: '700',
-    },
-    heavy: {
-      fontFamily: Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' }),
-      fontWeight: '800',
-    },
-  },
-};
+  };
+}
+
+/** Static navigation theme for light mode — kept for non-themed usage */
+export const navigationTheme = createNavigationTheme(lightPalette, false);

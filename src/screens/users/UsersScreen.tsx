@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -24,7 +24,10 @@ import {
 } from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
 import { useUsers } from '../../hooks/useUsers';
-import { fs, palette, radius, shadows, spacing } from '../../theme/theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { fs, type Palette, radius, spacing } from '../../theme/theme';
+
+type ShadowRecord = ReturnType<typeof import('../../theme/theme').createShadows>;
 
 const ROLES = ['admin', 'user', 'internal-admin'];
 const ROLE_TONES: Record<string, 'danger' | 'primary' | 'info'> = {
@@ -50,6 +53,8 @@ function RoleSelector({
   selected: string[];
   onChange: (roles: string[]) => void;
 }) {
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
   const toggle = (role: string) =>
     onChange(selected.includes(role) ? selected.filter(value => value !== role) : [...selected, role]);
 
@@ -83,6 +88,8 @@ function UserSheet({
   children: React.ReactNode;
   onClose: () => void;
 }) {
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -101,6 +108,8 @@ function UserSheet({
 }
 
 export default function UsersScreen() {
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
   const { user: authUser } = useAuth();
   const canWrite = authUser?.roles?.includes('admin') ?? false;
   const { users, loading, refreshing, fetchUsers, refresh, addUser, editUser, removeUser } = useUsers();
@@ -523,7 +532,8 @@ export default function UsersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(p: Palette, shadows: ShadowRecord) {
+  return StyleSheet.create({
   center: {
     flex: 1,
     alignItems: 'center',
@@ -538,8 +548,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   heroCard: {
-    backgroundColor: palette.primary,
-    borderColor: palette.primary,
+    backgroundColor: p.primary,
+    borderColor: p.primary,
     ...shadows.md,
   },
   heroEyebrow: {
@@ -597,10 +607,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   userCard: {
-    backgroundColor: palette.surface,
+    backgroundColor: p.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: p.border,
     padding: spacing.md,
     marginBottom: spacing.md,
     flexDirection: 'row',
@@ -633,13 +643,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   userName: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(15),
     fontWeight: '700',
     letterSpacing: -0.2,
   },
   userEmail: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(12),
     marginTop: 3,
   },
@@ -662,20 +672,20 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: palette.border,
-    backgroundColor: palette.surfaceMuted,
+    borderColor: p.border,
+    backgroundColor: p.surfaceMuted,
   },
   actionChipDanger: {
-    backgroundColor: palette.dangerSoft,
+    backgroundColor: p.dangerSoft,
     borderColor: '#FECACA',
   },
   actionChipText: {
-    color: palette.primaryDark,
+    color: p.primaryDark,
     fontSize: fs(12),
     fontWeight: '700',
   },
   actionChipTextDanger: {
-    color: palette.danger,
+    color: p.danger,
   },
   actionsColumn: {
     width: 92,
@@ -688,11 +698,11 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: palette.overlay,
+    backgroundColor: p.overlay,
   },
   sheet: {
     maxHeight: '88%',
-    backgroundColor: palette.surface,
+    backgroundColor: p.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.screen,
@@ -701,13 +711,13 @@ const styles = StyleSheet.create({
     width: 46,
     height: 5,
     borderRadius: radius.pill,
-    backgroundColor: palette.borderStrong,
+    backgroundColor: p.borderStrong,
     alignSelf: 'center',
     marginTop: spacing.md,
     marginBottom: spacing.md,
   },
   sheetTitle: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(20),
     fontWeight: '700',
     marginBottom: spacing.lg,
@@ -725,17 +735,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: palette.border,
-    backgroundColor: palette.surfaceMuted,
+    borderColor: p.border,
+    backgroundColor: p.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
   roleChipActive: {
-    backgroundColor: palette.primary,
-    borderColor: palette.primary,
+    backgroundColor: p.primary,
+    borderColor: p.primary,
   },
   roleChipText: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(12),
     fontWeight: '700',
   },
@@ -749,7 +759,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   sheetSubtext: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(13),
     lineHeight: 19,
     marginBottom: spacing.lg,
@@ -770,8 +780,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   pwdEyeText: {
-    color: palette.primary,
+    color: p.primary,
     fontSize: fs(13),
     fontWeight: '700',
   },
-});
+  });
+}

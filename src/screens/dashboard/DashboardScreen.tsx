@@ -21,7 +21,10 @@ import {
 } from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
 import { useStats } from '../../hooks/useStats';
-import { fs, palette, radius, shadows, spacing } from '../../theme/theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { fs, type Palette, radius, spacing } from '../../theme/theme';
+
+type ShadowRecord = ReturnType<typeof import('../../theme/theme').createShadows>;
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -40,6 +43,9 @@ function TrendChart({
 }: {
   data: Array<{ _id: { year: number; month: number }; total: number; count: number }>;
 }) {
+  const { palette, shadows, isDark } = useTheme();
+  const styles = React.useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
+
   if (!data || data.length === 0) {
     return <Text style={styles.emptyText}>Monthly trend will appear once donations are recorded.</Text>;
   }
@@ -105,7 +111,7 @@ function TrendChart({
         xAxisColor={palette.border}
         yAxisTextStyle={styles.chartAxisText}
         xAxisLabelTextStyle={styles.chartAxisText}
-        rulesColor="rgba(4,94,83,0.08)"
+        rulesColor={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(4,94,83,0.08)'}
         rulesType="dashed"
         noOfSections={4}
         maxValue={maxValue + yStepValue}
@@ -133,6 +139,9 @@ function QuickTile({
   onPress: () => void;
   emphasized?: boolean;
 }) {
+  const { palette, shadows } = useTheme();
+  const styles = React.useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
+
   return (
     <TouchableOpacity
       activeOpacity={0.9}
@@ -155,6 +164,8 @@ function QuickTile({
 
 export default function DashboardScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { palette, shadows } = useTheme();
+  const styles = React.useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
   const { stats, loading, refreshing, fetchStats, refresh } = useStats();
 
   useFocusEffect(
@@ -368,22 +379,23 @@ export default function DashboardScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    paddingTop: spacing.xs,
-  },
-  heroCard: {
-    backgroundColor: palette.primary,
-    borderColor: palette.primary,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.lg,
-    ...shadows.md,
-  },
+function makeStyles(p: Palette, shadows: ShadowRecord) {
+  return StyleSheet.create({
+    center: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    content: {
+      paddingTop: spacing.xs,
+    },
+    heroCard: {
+      backgroundColor: p.primary,
+      borderColor: p.primary,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.lg,
+      ...shadows.md,
+    },
   heroEyebrow: {
     color: 'rgba(255,255,255,0.74)',
     fontSize: fs(11),
@@ -441,31 +453,31 @@ const styles = StyleSheet.create({
   quickTile: {
     width: '47.5%',
     minHeight: 120,
-    backgroundColor: palette.surface,
+    backgroundColor: p.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: p.border,
     padding: spacing.md,
     justifyContent: 'space-between',
     ...shadows.sm,
   },
   quickTileAccent: {
-    backgroundColor: palette.primarySoft,
-    borderColor: palette.accentSoft,
+    backgroundColor: p.primarySoft,
+    borderColor: p.accentSoft,
   },
   quickTileIcon: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: palette.surfaceMuted,
+    backgroundColor: p.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickTileIconAccent: {
-    backgroundColor: palette.primary,
+    backgroundColor: p.primary,
   },
   quickTileIconText: {
-    color: palette.primaryDark,
+    color: p.primaryDark,
     fontSize: fs(11),
     fontWeight: '700',
   },
@@ -473,22 +485,22 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   quickTileTitle: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(15),
     fontWeight: '700',
     marginTop: spacing.sm,
   },
   quickTileTitleAccent: {
-    color: palette.primaryDark,
+    color: p.primaryDark,
   },
   quickTileCaption: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(12),
     lineHeight: 17,
     marginTop: spacing.xs,
   },
   quickTileCaptionAccent: {
-    color: palette.primaryDark,
+    color: p.primaryDark,
   },
   sectionCard: {
     marginTop: spacing.lg,
@@ -499,19 +511,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   barTopLabel: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(9),
     fontWeight: '700',
     marginBottom: 2,
   },
   peakLabel: {
-    color: palette.textSoft,
+    color: p.textSoft,
     fontSize: fs(10),
     fontWeight: '700',
     backgroundColor: 'transparent',
   },
   chartAxisText: {
-    color: palette.textSoft,
+    color: p.textSoft,
     fontSize: fs(10),
     fontWeight: '600',
   },
@@ -528,7 +540,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   chartBarValue: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(10),
     fontWeight: '600',
   },
@@ -542,13 +554,13 @@ const styles = StyleSheet.create({
     minHeight: 4,
   },
   chartBarActive: {
-    backgroundColor: palette.primary,
+    backgroundColor: p.primary,
   },
   chartBarInactive: {
-    backgroundColor: palette.surfaceStrong,
+    backgroundColor: p.surfaceStrong,
   },
   chartBarLabel: {
-    color: palette.textSoft,
+    color: p.textSoft,
     fontSize: fs(11),
     fontWeight: '600',
   },
@@ -562,28 +574,28 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   progressLabel: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(14),
     fontWeight: '700',
   },
   progressCaption: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(11),
   },
   progressBarTrack: {
     height: 8,
     borderRadius: radius.pill,
-    backgroundColor: palette.surfaceMuted,
+    backgroundColor: p.surfaceMuted,
     marginTop: spacing.sm,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
     borderRadius: radius.pill,
-    backgroundColor: palette.primary,
+    backgroundColor: p.primary,
   },
   progressAmount: {
-    color: palette.primaryDark,
+    color: p.primaryDark,
     fontSize: fs(12),
     fontWeight: '700',
     marginTop: spacing.sm,
@@ -593,7 +605,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: palette.border,
+    borderTopColor: p.border,
     gap: spacing.md,
   },
   recentRowLast: {
@@ -603,12 +615,12 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: palette.surfaceMuted,
+    backgroundColor: p.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
   recentIndexText: {
-    color: palette.primaryDark,
+    color: p.primaryDark,
     fontSize: fs(16),
     fontWeight: '700',
   },
@@ -616,12 +628,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   recentName: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(15),
     fontWeight: '700',
   },
   recentMeta: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(11),
     marginTop: spacing.xs,
   },
@@ -630,12 +642,12 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   recentAmount: {
-    color: palette.primaryDark,
+    color: p.primaryDark,
     fontSize: fs(13),
     fontWeight: '700',
   },
   emptyText: {
-    color: palette.textSoft,
+    color: p.textSoft,
     fontSize: fs(12),
     lineHeight: 18,
     paddingTop: spacing.md,
@@ -643,4 +655,5 @@ const styles = StyleSheet.create({
   bottomButton: {
     marginTop: spacing.lg,
   },
-});
+  });
+}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -15,8 +15,9 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { palette, radius, shadows, spacing } from '../../theme/theme';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../../theme/ThemeContext';
+import { type Palette, radius, spacing } from '../../theme/theme';
 
 type Tone = 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info';
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
@@ -65,84 +66,301 @@ interface InputFieldProps extends TextInputProps {
   style?: StyleProp<TextStyle>;
 }
 
-const badgeToneStyles: Record<Tone, { container: ViewStyle; text: TextStyle }> = {
-  default: {
-    container: { backgroundColor: palette.surfaceMuted, borderColor: palette.borderStrong },
-    text: { color: palette.textMuted },
-  },
-  primary: {
-    container: { backgroundColor: palette.primarySoft, borderColor: palette.accentSoft },
-    text: { color: palette.primaryDark },
-  },
-  success: {
-    container: { backgroundColor: palette.primarySurface, borderColor: palette.accentSoft },
-    text: { color: palette.primaryDark },
-  },
-  warning: {
-    container: { backgroundColor: palette.warningSoft, borderColor: '#F3D08A' },
-    text: { color: '#995C00' },
-  },
-  danger: {
-    container: { backgroundColor: palette.dangerSoft, borderColor: '#F2B2B2' },
-    text: { color: '#A01919' },
-  },
-  info: {
-    container: { backgroundColor: palette.infoSoft, borderColor: '#9EE5D2' },
-    text: { color: palette.info },
-  },
-};
+function makeBadgeToneStyles(p: Palette, isDark: boolean): Record<Tone, { container: ViewStyle; text: TextStyle }> {
+  return {
+    default: {
+      container: { backgroundColor: p.surfaceMuted, borderColor: p.borderStrong },
+      text: { color: p.textMuted },
+    },
+    primary: {
+      container: { backgroundColor: p.primarySoft, borderColor: p.accentSoft },
+      text: { color: isDark ? p.accent : p.primaryDark },
+    },
+    success: {
+      container: { backgroundColor: p.primarySurface, borderColor: p.accentSoft },
+      text: { color: isDark ? p.accent : p.primaryDark },
+    },
+    warning: {
+      container: { backgroundColor: p.warningSoft, borderColor: isDark ? '#6B4A10' : '#F3D08A' },
+      text: { color: isDark ? '#F59E0B' : '#995C00' },
+    },
+    danger: {
+      container: { backgroundColor: p.dangerSoft, borderColor: isDark ? '#7B2020' : '#F2B2B2' },
+      text: { color: isDark ? '#F87171' : '#A01919' },
+    },
+    info: {
+      container: { backgroundColor: p.infoSoft, borderColor: isDark ? '#265E58' : '#9EE5D2' },
+      text: { color: p.info },
+    },
+  };
+}
 
-const buttonVariants: Record<
-  ButtonVariant,
-  { container: ViewStyle; text: TextStyle; loaderColor: string }
-> = {
-  primary: {
-    container: {
-      backgroundColor: palette.primary,
-      borderColor: palette.primary,
-      borderWidth: 1,
-      ...shadows.sm,
+type ShadowRecord = ReturnType<typeof import('../../theme/theme').createShadows>;
+
+function makeButtonVariants(
+  p: Palette,
+  isDark: boolean,
+  shadows: ShadowRecord,
+): Record<ButtonVariant, { container: ViewStyle; text: TextStyle; loaderColor: string }> {
+  return {
+    primary: {
+      container: {
+        backgroundColor: p.primary,
+        borderColor: p.primary,
+        borderWidth: 1,
+        ...shadows.sm,
+      },
+      text: { color: '#FFFFFF' },
+      loaderColor: '#FFFFFF',
     },
-    text: { color: '#FFFFFF' },
-    loaderColor: '#FFFFFF',
-  },
-  secondary: {
-    container: {
-      backgroundColor: palette.surfaceMuted,
-      borderColor: palette.borderStrong,
-      borderWidth: 1,
+    secondary: {
+      container: {
+        backgroundColor: p.surfaceMuted,
+        borderColor: p.borderStrong,
+        borderWidth: 1,
+      },
+      text: { color: isDark ? p.accent : p.primaryDark },
+      loaderColor: isDark ? p.accent : p.primaryDark,
     },
-    text: { color: palette.primaryDark },
-    loaderColor: palette.primaryDark,
-  },
-  ghost: {
-    container: {
-      backgroundColor: 'transparent',
-      borderColor: palette.border,
-      borderWidth: 1,
+    ghost: {
+      container: {
+        backgroundColor: 'transparent',
+        borderColor: p.border,
+        borderWidth: 1,
+      },
+      text: { color: isDark ? p.accent : p.primaryDark },
+      loaderColor: isDark ? p.accent : p.primaryDark,
     },
-    text: { color: palette.primaryDark },
-    loaderColor: palette.primaryDark,
-  },
-  danger: {
-    container: {
-      backgroundColor: palette.dangerSoft,
-      borderColor: '#F2B2B2',
-      borderWidth: 1,
+    danger: {
+      container: {
+        backgroundColor: p.dangerSoft,
+        borderColor: isDark ? '#7B2020' : '#F2B2B2',
+        borderWidth: 1,
+      },
+      text: { color: isDark ? '#F87171' : '#A01919' },
+      loaderColor: isDark ? '#F87171' : '#A01919',
     },
-    text: { color: '#A01919' },
-    loaderColor: '#A01919',
-  },
-  success: {
-    container: {
-      backgroundColor: palette.primarySoft,
-      borderColor: palette.accentSoft,
-      borderWidth: 1,
+    success: {
+      container: {
+        backgroundColor: p.primarySoft,
+        borderColor: p.accentSoft,
+        borderWidth: 1,
+      },
+      text: { color: isDark ? p.accent : p.primaryDark },
+      loaderColor: isDark ? p.accent : p.primaryDark,
     },
-    text: { color: palette.primaryDark },
-    loaderColor: palette.primaryDark,
-  },
-};
+  };
+}
+
+function makeStyles(p: Palette, shadows: ShadowRecord, bottomInset: number = 0) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: p.background,
+    },
+    safeAreaGreen: {
+      backgroundColor: p.primary,
+    },
+    pageBody: {
+      flex: 1,
+      backgroundColor: p.background,
+    },
+    pageBodyRaised: {
+      marginTop: -radius.xl,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      overflow: 'visible',
+    },
+    pageContent: {
+      paddingHorizontal: spacing.screen,
+      paddingBottom: 122 + bottomInset,
+    },
+    pageContentRaised: {
+      paddingTop: spacing.lg,
+    },
+    pageContentPlain: {
+      paddingTop: spacing.md,
+    },
+    headerWrap: {
+      backgroundColor: p.primary,
+      paddingHorizontal: spacing.screen,
+      paddingTop: spacing.md,
+      paddingBottom: 52,
+    },
+    headerWrapCompact: {
+      paddingTop: spacing.sm,
+      paddingBottom: 42,
+    },
+    headerRow: {
+      minHeight: 80,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerRowCompact: {
+      minHeight: 58,
+    },
+    headerTextWrap: {
+      gap: 4,
+    },
+    headerTextWrapCenter: {
+      alignItems: 'center',
+      maxWidth: '80%',
+    },
+    headerTextWrapLeft: {
+      alignItems: 'flex-start',
+      alignSelf: 'stretch',
+      maxWidth: '100%',
+    },
+    headerEyebrow: {
+      color: 'rgba(255,255,255,0.72)',
+      fontSize: 11,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 1.2,
+    },
+    headerTitle: {
+      color: '#FFFFFF',
+      fontSize: 19,
+      fontWeight: '600',
+      lineHeight: 25,
+      letterSpacing: -0.4,
+      textAlign: 'center',
+    },
+    headerTitleCompact: {
+      fontSize: 17,
+      lineHeight: 22,
+    },
+    headerSubtitle: {
+      color: 'rgba(255,255,255,0.72)',
+      fontSize: 13,
+      lineHeight: 18,
+      fontWeight: '400',
+      maxWidth: 320,
+      textAlign: 'center',
+    },
+    headerLeading: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+    },
+    headerTrailing: {
+      position: 'absolute',
+      right: 0,
+      top: 0,
+    },
+    headerTextLeft: {
+      textAlign: 'left',
+    },
+    card: {
+      backgroundColor: p.surface,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: p.border,
+      padding: spacing.lg,
+      ...shadows.md,
+    },
+    sectionHeading: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+      marginBottom: spacing.md,
+    },
+    sectionHeadingText: {
+      flex: 1,
+    },
+    sectionTitle: {
+      color: p.text,
+      fontSize: 16,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+    },
+    sectionCaption: {
+      color: p.textMuted,
+      fontSize: 12,
+      marginTop: 4,
+      lineHeight: 17,
+    },
+    badge: {
+      alignSelf: 'flex-start',
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+    },
+    badgeText: {
+      fontSize: 11,
+      fontWeight: '600',
+      letterSpacing: 0.1,
+    },
+    buttonBase: {
+      minHeight: 46,
+      borderRadius: radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing.lg,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    buttonText: {
+      fontSize: 14,
+      fontWeight: '700',
+      letterSpacing: 0.1,
+    },
+    fieldGroup: {
+      marginBottom: spacing.md,
+    },
+    fieldHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing.sm,
+    },
+    fieldLabel: {
+      color: p.text,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    fieldHint: {
+      color: p.textSoft,
+      fontSize: 11,
+    },
+    input: {
+      minHeight: 46,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: p.borderStrong,
+      backgroundColor: p.surfaceMuted,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      color: p.text,
+      fontSize: 15,
+    },
+    inputMultiline: {
+      minHeight: 96,
+      textAlignVertical: 'top',
+    },
+    emptyWrap: {
+      alignItems: 'center',
+      paddingVertical: 52,
+      paddingHorizontal: spacing.xl,
+    },
+    emptyTitle: {
+      color: p.text,
+      fontSize: 16,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    emptySubtitle: {
+      color: p.textMuted,
+      fontSize: 13,
+      textAlign: 'center',
+      marginTop: spacing.sm,
+      lineHeight: 19,
+    },
+  });
+}
 
 export function Page({
   children,
@@ -153,12 +371,15 @@ export function Page({
   style?: StyleProp<ViewStyle>;
   header?: React.ReactNode;
 }) {
+  const { palette, shadows, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(palette, shadows, insets.bottom), [palette, shadows, insets.bottom]);
   const hasHeader = Boolean(header);
 
   return (
     <SafeAreaView edges={['top']} style={[styles.safeArea, hasHeader ? styles.safeAreaGreen : null, style]}>
       <StatusBar
-        barStyle={hasHeader ? 'light-content' : 'dark-content'}
+        barStyle={hasHeader || isDark ? 'light-content' : 'dark-content'}
         backgroundColor={hasHeader ? palette.primary : palette.background}
       />
       {header}
@@ -175,12 +396,15 @@ export function PageScroll({
   keyboardShouldPersistTaps = 'handled',
   header,
 }: PageProps) {
+  const { palette, shadows, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(palette, shadows, insets.bottom), [palette, shadows, insets.bottom]);
   const hasHeader = Boolean(header);
 
   return (
     <SafeAreaView edges={['top']} style={[styles.safeArea, hasHeader ? styles.safeAreaGreen : null, style]}>
       <StatusBar
-        barStyle={hasHeader ? 'light-content' : 'dark-content'}
+        barStyle={hasHeader || isDark ? 'light-content' : 'dark-content'}
         backgroundColor={hasHeader ? palette.primary : palette.background}
       />
       {header}
@@ -209,6 +433,9 @@ export function PageHeader({
   compact = false,
   align = 'center',
 }: PageHeaderProps) {
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
+
   return (
     <View style={[styles.headerWrap, compact ? styles.headerWrapCompact : null]}>
       <View style={[styles.headerRow, compact ? styles.headerRowCompact : null]}>
@@ -250,6 +477,8 @@ export function SurfaceCard({
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
@@ -262,6 +491,9 @@ export function SectionHeading({
   caption?: string;
   action?: React.ReactNode;
 }) {
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
+
   return (
     <View style={styles.sectionHeading}>
       <View style={styles.sectionHeadingText}>
@@ -274,9 +506,13 @@ export function SectionHeading({
 }
 
 export function Badge({ label, tone = 'default', style, textStyle }: BadgeProps) {
+  const { palette, shadows, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
+  const toneStyles = useMemo(() => makeBadgeToneStyles(palette, isDark), [palette, isDark]);
+
   return (
-    <View style={[styles.badge, badgeToneStyles[tone].container, style]}>
-      <Text style={[styles.badgeText, badgeToneStyles[tone].text, textStyle]}>{label}</Text>
+    <View style={[styles.badge, toneStyles[tone].container, style]}>
+      <Text style={[styles.badgeText, toneStyles[tone].text, textStyle]}>{label}</Text>
     </View>
   );
 }
@@ -290,7 +526,10 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const variantStyle = buttonVariants[variant];
+  const { palette, shadows, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
+  const variants = useMemo(() => makeButtonVariants(palette, isDark, shadows), [palette, isDark, shadows]);
+  const variantStyle = variants[variant];
   const isDisabled = disabled || loading;
 
   return (
@@ -314,6 +553,9 @@ export function Button({
 }
 
 export function FieldGroup({ label, hint, children, style }: FieldGroupProps) {
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
+
   return (
     <View style={[styles.fieldGroup, style]}>
       <View style={styles.fieldHeader}>
@@ -326,6 +568,9 @@ export function FieldGroup({ label, hint, children, style }: FieldGroupProps) {
 }
 
 export function InputField({ style, multiline, ...props }: InputFieldProps) {
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
+
   return (
     <TextInput
       placeholderTextColor={palette.textSoft}
@@ -343,6 +588,9 @@ export function EmptyState({
   title: string;
   subtitle?: string;
 }) {
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
+
   return (
     <View style={styles.emptyWrap}>
       <Text style={styles.emptyTitle}>{title}</Text>
@@ -350,219 +598,3 @@ export function EmptyState({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: palette.background,
-  },
-  safeAreaGreen: {
-    backgroundColor: palette.primary,
-  },
-  pageBody: {
-    flex: 1,
-    backgroundColor: palette.background,
-  },
-  pageBodyRaised: {
-    marginTop: -radius.xl,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    overflow: 'visible',
-  },
-  pageContent: {
-    paddingHorizontal: spacing.screen,
-    paddingBottom: 122,
-  },
-  pageContentRaised: {
-    paddingTop: spacing.lg,
-  },
-  pageContentPlain: {
-    paddingTop: spacing.md,
-  },
-
-  headerWrap: {
-    backgroundColor: palette.primary,
-    paddingHorizontal: spacing.screen,
-    paddingTop: spacing.md,
-    paddingBottom: 52,
-  },
-  headerWrapCompact: {
-    paddingTop: spacing.sm,
-    paddingBottom: 42,
-  },
-  headerRow: {
-    minHeight: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerRowCompact: {
-    minHeight: 58,
-  },
-  headerTextWrap: {
-    gap: 4,
-  },
-  headerTextWrapCenter: {
-    alignItems: 'center',
-    maxWidth: '80%',
-  },
-  headerTextWrapLeft: {
-    alignItems: 'flex-start',
-    alignSelf: 'stretch',
-    maxWidth: '100%',
-  },
-  headerEyebrow: {
-    color: 'rgba(255,255,255,0.72)',
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 19,
-    fontWeight: '600',
-    lineHeight: 25,
-    letterSpacing: -0.4,
-    textAlign: 'center',
-  },
-  headerTitleCompact: {
-    fontSize: 17,
-    lineHeight: 22,
-  },
-  headerSubtitle: {
-    color: 'rgba(255,255,255,0.72)',
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '400',
-    maxWidth: 320,
-    textAlign: 'center',
-  },
-  headerLeading: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-  },
-  headerTrailing: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-  },
-  headerTextLeft: {
-    textAlign: 'left',
-  },
-
-  card: {
-    backgroundColor: palette.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: palette.border,
-    padding: spacing.lg,
-    ...shadows.md,
-  },
-
-  sectionHeading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
-  sectionHeadingText: {
-    flex: 1,
-  },
-  sectionTitle: {
-    color: palette.text,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  sectionCaption: {
-    color: palette.textMuted,
-    fontSize: 12,
-    marginTop: 4,
-    lineHeight: 17,
-  },
-
-  badge: {
-    alignSelf: 'flex-start',
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.1,
-  },
-
-  buttonBase: {
-    minHeight: 46,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.1,
-  },
-
-  fieldGroup: {
-    marginBottom: spacing.md,
-  },
-  fieldHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  fieldLabel: {
-    color: palette.text,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  fieldHint: {
-    color: palette.textSoft,
-    fontSize: 11,
-  },
-
-  input: {
-    minHeight: 46,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: palette.borderStrong,
-    backgroundColor: palette.surfaceMuted,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    color: palette.text,
-    fontSize: 15,
-  },
-  inputMultiline: {
-    minHeight: 96,
-    textAlignVertical: 'top',
-  },
-
-  emptyWrap: {
-    alignItems: 'center',
-    paddingVertical: 52,
-    paddingHorizontal: spacing.xl,
-  },
-  emptyTitle: {
-    color: palette.text,
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    color: palette.textMuted,
-    fontSize: 13,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-    lineHeight: 19,
-  },
-});

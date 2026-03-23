@@ -12,7 +12,9 @@ import ReceiptPreviewScreen from '../screens/donations/ReceiptPreviewScreen';
 import HistoryScreen from '../screens/history/HistoryScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import UsersScreen from '../screens/users/UsersScreen';
-import { navigationTheme, palette, radius } from '../theme/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../theme/ThemeContext';
+import { radius } from '../theme/theme';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -126,6 +128,8 @@ const createTabBarIcon =
 
 function MainTabs() {
   const { user, logout } = useAuth();
+  const { palette } = useTheme();
+  const insets = useSafeAreaInsets();
   const roles: string[] = Array.isArray(user?.roles) ? user.roles : ['user'];
 
   const isAdmin = roles.includes('admin');
@@ -148,7 +152,7 @@ function MainTabs() {
         tabBarInactiveTintColor: 'rgba(255,255,255,0.62)',
         tabBarLabelStyle: styles.tabLabel,
         tabBarIconStyle: styles.tabIconWrap,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [styles.tabBar, { backgroundColor: palette.primary, shadowColor: palette.shadow, bottom: 14 + insets.bottom }],
         tabBarItemStyle: styles.tabBarItem,
         tabBarActiveBackgroundColor: 'rgba(255,255,255,0.15)',
         tabBarIcon: createTabBarIcon(route.name),
@@ -186,10 +190,11 @@ function MainTabs() {
 
 export default function AppNavigator() {
   const { token, isLoading } = useAuth();
+  const { navigationTheme, palette } = useTheme();
 
   if (isLoading) {
     return (
-      <View style={styles.loadingScreen}>
+      <View style={[styles.loadingScreen, { backgroundColor: palette.primary }]}>
         <View style={styles.loaderWrap}>
           <ActivityIndicator color="#FFFFFF" size="large" style={styles.loaderSpinner} />
           <Image
@@ -224,7 +229,6 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   loadingScreen: {
     flex: 1,
-    backgroundColor: palette.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -252,13 +256,11 @@ const styles = StyleSheet.create({
     height: Platform.OS === 'ios' ? 86 : 78,
     borderTopWidth: 0,
     borderRadius: 28,
-    backgroundColor: palette.primary,
     paddingTop: 10,
     paddingBottom: Platform.OS === 'ios' ? 16 : 10,
     paddingHorizontal: 8,
     marginHorizontal: 8,
     elevation: 0,
-    shadowColor: palette.shadow,
     shadowOpacity: 0.18,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },

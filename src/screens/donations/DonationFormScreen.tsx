@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -25,7 +25,10 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { useDonations } from '../../hooks/useDonations';
 import { uploadQrImage } from '../../services/api';
-import { fs, palette, radius, shadows, spacing } from '../../theme/theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { fs, type Palette, radius, spacing } from '../../theme/theme';
+
+type ShadowRecord = ReturnType<typeof import('../../theme/theme').createShadows>;
 
 const DONATION_TYPES = ['Zakat', 'Fitra', 'Atiyaat', 'Noori Box'];
 const PAYMENT_MODES = ['Cheque', 'Bank Transfer', 'QR', 'Cash'];
@@ -40,6 +43,9 @@ interface SelectModalProps {
 }
 
 function SelectModal({ visible, options, onSelect, onClose, title }: SelectModalProps) {
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -81,6 +87,9 @@ function PickerField({
   onPress: () => void;
   hint?: string;
 }) {
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
+
   return (
     <FieldGroup label={label} hint={hint}>
       <TouchableOpacity activeOpacity={0.88} style={styles.pickerField} onPress={onPress}>
@@ -99,6 +108,8 @@ const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
 export default function DonationFormScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { palette, shadows } = useTheme();
+  const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
   const { submitDonation } = useDonations();
   const today = new Date();
 
@@ -450,13 +461,14 @@ export default function DonationFormScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(p: Palette, shadows: ShadowRecord) {
+  return StyleSheet.create({
   content: {
     paddingTop: spacing.xs,
   },
   heroCard: {
-    backgroundColor: palette.primary,
-    borderColor: palette.primary,
+    backgroundColor: p.primary,
+    borderColor: p.primary,
     ...shadows.md,
   },
   heroTitle: {
@@ -503,29 +515,29 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: palette.borderStrong,
-    backgroundColor: palette.surfaceMuted,
+    borderColor: p.borderStrong,
+    backgroundColor: p.surfaceMuted,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   pickerValue: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(14),
     flex: 1,
   },
   pickerPlaceholder: {
-    color: palette.textSoft,
+    color: p.textSoft,
   },
   pickerAction: {
     borderRadius: radius.pill,
-    backgroundColor: palette.primarySoft,
+    backgroundColor: p.primarySoft,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   pickerActionText: {
-    color: palette.primaryDark,
+    color: p.primaryDark,
     fontSize: fs(11),
     fontWeight: '700',
   },
@@ -538,8 +550,8 @@ const styles = StyleSheet.create({
     minHeight: 100,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: palette.border,
-    backgroundColor: palette.surfaceMuted,
+    borderColor: p.border,
+    backgroundColor: p.surfaceMuted,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     justifyContent: 'space-between',
@@ -548,19 +560,19 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   qrBtnTitle: {
-    color: palette.primaryDark,
+    color: p.primaryDark,
     fontSize: fs(14),
     fontWeight: '700',
   },
   qrBtnText: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(11),
     lineHeight: 16,
   },
   qrPreviewWrap: {
     borderRadius: radius.lg,
     overflow: 'hidden',
-    backgroundColor: palette.surfaceMuted,
+    backgroundColor: p.surfaceMuted,
   },
   qrPreview: {
     width: '100%',
@@ -580,17 +592,17 @@ const styles = StyleSheet.create({
   },
   submitCard: {
     marginTop: spacing.xl,
-    backgroundColor: palette.primarySoft,
-    borderColor: palette.accentSoft,
+    backgroundColor: p.primarySoft,
+    borderColor: p.accentSoft,
   },
   submitTitle: {
-    color: palette.primaryDark,
+    color: p.primaryDark,
     fontSize: fs(20),
     fontWeight: '700',
     letterSpacing: -0.4,
   },
   submitText: {
-    color: palette.textMuted,
+    color: p.textMuted,
     fontSize: fs(13),
     lineHeight: 19,
     marginTop: spacing.sm,
@@ -601,11 +613,11 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: palette.overlay,
+    backgroundColor: p.overlay,
   },
   modalSheet: {
     maxHeight: '72%',
-    backgroundColor: palette.surface,
+    backgroundColor: p.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     paddingBottom: spacing.xl,
@@ -614,13 +626,13 @@ const styles = StyleSheet.create({
     width: 46,
     height: 5,
     borderRadius: radius.pill,
-    backgroundColor: palette.borderStrong,
+    backgroundColor: p.borderStrong,
     alignSelf: 'center',
     marginTop: spacing.md,
     marginBottom: spacing.md,
   },
   modalTitle: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(18),
     fontWeight: '700',
     paddingHorizontal: spacing.screen,
@@ -630,11 +642,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
     paddingVertical: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: palette.border,
+    borderTopColor: p.border,
   },
   modalItemText: {
-    color: palette.text,
+    color: p.text,
     fontSize: fs(14),
     fontWeight: '600',
   },
-});
+  });
+}
