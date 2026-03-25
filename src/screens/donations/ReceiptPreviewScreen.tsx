@@ -232,15 +232,51 @@ export default function ReceiptPreviewScreen({ navigation, route }: any) {
                 onPress={handleSendWhatsApp}
               />
             ) : null}
-            <View style={styles.secondaryRow}>
-              {receiptUrl ? (
-                <Button label="Share" variant="secondary" onPress={handleShare} style={styles.halfBtn} />
-              ) : null}
-              {receiptUrl ? (
-                <Button label="Open PDF" variant="secondary" onPress={() => Linking.openURL(receiptUrl!)} style={styles.halfBtn} />
-              ) : null}
-              <Button label="Regenerate" variant="ghost" loading={regenerating} onPress={handleRegenerate} style={styles.halfBtn} />
-            </View>
+
+            {/* Row 1 — Share + Open PDF (only when receipt exists) */}
+            {receiptUrl ? (
+              <View style={styles.secondaryRow}>
+                <TouchableOpacity
+                  activeOpacity={0.82}
+                  style={styles.iconBtn}
+                  onPress={handleShare}>
+                  <Text style={styles.iconBtnIcon}>↑</Text>
+                  <Text style={styles.iconBtnLabel}>Share</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.82}
+                  style={styles.iconBtn}
+                  onPress={() => Linking.openURL(receiptUrl!)}>
+                  <Text style={styles.iconBtnIcon}>⊞</Text>
+                  <Text style={styles.iconBtnLabel}>Open PDF</Text>
+                </TouchableOpacity>
+                {donationType === 'QR' && qrImageUrl ? (
+                  <TouchableOpacity
+                    activeOpacity={0.82}
+                    style={styles.iconBtn}
+                    onPress={() => Linking.openURL(qrImageUrl!)}>
+                    <Text style={styles.iconBtnIcon}>◫</Text>
+                    <Text style={styles.iconBtnLabel}>Screenshot</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ) : null}
+
+            {/* Row 2 — Regenerate full-width */}
+            <TouchableOpacity
+              activeOpacity={0.82}
+              style={[styles.regenBtn, regenerating ? styles.regenBtnDisabled : null]}
+              disabled={regenerating}
+              onPress={handleRegenerate}>
+              {regenerating ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.regenBtnIcon}>↺</Text>
+              )}
+              <Text style={styles.regenBtnLabel}>
+                {regenerating ? 'Regenerating…' : 'Regenerate Receipt'}
+              </Text>
+            </TouchableOpacity>
           </SurfaceCard>
 
         </ScrollView>
@@ -409,12 +445,50 @@ function makeStyles(p: Palette) {
   },
   secondaryRow: {
     flexDirection: 'row',
-    flexWrap: 'nowrap',
     gap: spacing.sm,
   },
-  halfBtn: {
+  iconBtn: {
     flex: 1,
-    minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    backgroundColor: p.surfaceStrong,
+    gap: 4,
+    minHeight: 64,
+  },
+  iconBtnIcon: {
+    fontSize: fs(22),
+    color: p.primary,
+    lineHeight: fs(26),
+  },
+  iconBtnLabel: {
+    fontSize: fs(12),
+    fontWeight: '600',
+    color: p.text,
+    textAlign: 'center',
+  },
+  regenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderRadius: 12,
+    backgroundColor: p.primary,
+  },
+  regenBtnDisabled: {
+    opacity: 0.6,
+  },
+  regenBtnIcon: {
+    fontSize: fs(20),
+    color: '#FFFFFF',
+    lineHeight: fs(24),
+  },
+  regenBtnLabel: {
+    fontSize: fs(15),
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   });
 }
