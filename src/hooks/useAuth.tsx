@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { login as apiLogin, register as apiRegister } from '../services/api';
+import { login as apiLogin, register as apiRegister, updateMe } from '../services/api';
 import type { AuthUser } from '../types/auth';
 
 interface AuthContextType {
@@ -10,6 +10,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (firstName: string, lastName: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (data: { firstName?: string; lastName?: string; email?: string; password?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -56,8 +57,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
   };
 
+  const updateProfile = async (data: { firstName?: string; lastName?: string; email?: string; password?: string }) => {
+    const { data: updated } = await updateMe(data);
+    const newUser: AuthUser = {
+      ...user!,
+      name: `${updated.firstName} ${updated.lastName}`,
+      email: updated.email,
+    };
+    await AsyncStorage.setItem('user', JSON.stringify(newUser));
+    setUser(newUser);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

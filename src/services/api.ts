@@ -33,6 +33,7 @@ export const getDonations = (params?: any) => api.get('/donations', { params });
 export const getDonation = (id: string) => api.get(`/donations/${id}`);
 export const updateDonation = (id: string, data: any) => api.patch(`/donations/${id}`, data);
 export const deleteDonation = (id: string) => api.delete(`/donations/${id}`);
+export const bulkDeleteDonations = (ids: string[]) => api.post('/donations/bulk-delete', { ids });
 
 // ─── Receipts ──────────────────────────────────────────────────────────
 export const generateReceipt = (donationId: string) =>
@@ -56,7 +57,27 @@ export const getUsers = () => api.get('/users');
 export const createUser = (data: any) => api.post('/users', data);
 export const updateUser = (id: string, data: any) => api.patch(`/users/${id}`, data);
 export const deleteUser = (id: string) => api.delete(`/users/${id}`);
+
+// ─── Self profile edit (all authenticated users) ────────────────────────
+export const updateMe = (data: any) => api.patch('/users/me', data);
 // ─── QR Screenshot upload ──────────────────────────────────────────────────
+export const uploadChequeImage = async (asset: {
+  uri: string;
+  type?: string;
+  fileName?: string;
+}): Promise<string> => {
+  const formData = new FormData();
+  formData.append('file', {
+    uri: asset.uri,
+    type: asset.type ?? 'image/jpeg',
+    name: asset.fileName ?? 'cheque.jpg',
+  } as any);
+  const { data } = await api.post('/donations/upload-cheque', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data.url;
+};
+
 export const uploadQrImage = async (asset: {
   uri: string;
   type?: string;

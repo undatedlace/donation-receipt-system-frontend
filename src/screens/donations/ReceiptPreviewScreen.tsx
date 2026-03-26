@@ -34,7 +34,7 @@ export default function ReceiptPreviewScreen({ navigation, route }: any) {
   const { donationId, receiptUrl: paramReceiptUrl, receiptNumber: paramReceiptNumber, donorName: paramDonorName, mobileNumber: paramMobileNumber, qrImageUrl: paramQrImageUrl } = route.params || {};
   const { sending, send } = useWhatsApp();
   const { user } = useAuth();
-  const canSendWhatsApp = user?.roles?.some((role: string) => role === 'admin' || role === 'internal-admin') ?? false;
+  const canSendWhatsApp = !!user;
 
   const [sent, setSent] = useState(false);
   const [regenerating, setRegenerating] = useState(false);

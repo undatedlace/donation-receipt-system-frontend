@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Use "ad-hoc" for Diawi distribution, "development" for personal testing -->
+    <key>method</key>
+    <string>ad-hoc</string>
+
+    <!-- Replace with your Apple Developer Team ID (found in developer.apple.com → Membership) -->
+    <key>teamID</key>
+    <string>YOUR_TEAM_ID</string>
+
+    <key>compileBitcode</key>
+    <false/>
+
+    <key>stripSwiftSymbols</key>
+    <true/>
+
+    <key>thinning</key>
+    <string>&lt;none&gt;</string>
+
+    <!-- Optional: explicitly name your provisioning profile -->
+    <!-- <key>provisioningProfiles</key>
+    <dict>
+        <key>com.donationsreceiptapp</key>
+        <string>Your Ad Hoc Profile Name</string>
+    </dict> -->
+</dict>
+</plist>

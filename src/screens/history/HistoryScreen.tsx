@@ -25,7 +25,7 @@ import {
 } from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
 import { useDonations } from '../../hooks/useDonations';
-import { generateReceipt } from '../../services/api';
+import { bulkDeleteDonations, generateReceipt } from '../../services/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { fs, type Palette, radius, spacing } from '../../theme/theme';
 
@@ -118,6 +118,10 @@ export default function HistoryScreen({ navigation }: any) {
   const [editLoading, setEditLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [activeSelectModal, setActiveSelectModal] = useState<string | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [modeFilter, setModeFilter] = useState('All');
   const [zoneFilter, setZoneFilter] = useState('All');
   const [branchFilter, setBranchFilter] = useState('All');
@@ -189,6 +193,42 @@ export default function HistoryScreen({ navigation }: any) {
     fetchDonations({ ...buildFilter(), page: 1 }, true);
   };
 
+  const selectedCount = Object.keys(selectedIds).length;
+
+  const toggleSelectItem = (id: string) => {
+    setSelectedIds(prev => {
+      if (prev[id]) { const next = { ...prev }; delete next[id]; return next; }
+      return { ...prev, [id]: true };
+    });
+  };
+
+  const selectAll = () => {
+    const all: Record<string, boolean> = {};
+    donations.forEach((d: any) => { all[d._id] = true; });
+    setSelectedIds(all);
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds({});
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Object.keys(selectedIds);
+    if (!ids.length) return;
+    setBulkDeleteLoading(true);
+    try {
+      await bulkDeleteDonations(ids);
+      setBulkDeleteModal(false);
+      exitSelectMode();
+      fetchDonations({ ...buildFilter(), page: 1 }, true);
+    } catch (error: any) {
+      Alert.alert('Error', error?.response?.data?.message || 'Failed to delete donations');
+    } finally {
+      setBulkDeleteLoading(false);
+    }
+  };
+
   const openDeleteModal = (id: string, name: string) => {
     setDeleteModal({ visible: true, id, name });
   };
@@ -216,6 +256,7 @@ export default function HistoryScreen({ navigation }: any) {
       amount: String(item.amount || ''),
       zone: item.zone || '',
       branch: item.branch || '',
+      chequeNumber: item.chequeNumber || '',
     });
     setEditDate(new Date(item.date));
     setEditModal({ visible: true });
@@ -376,27 +417,62 @@ export default function HistoryScreen({ navigation }: any) {
       </View>
       */}
 
-      {/* View toggle */}
+      {/* View toggle + select mode */}
       <View style={styles.viewRow}>
-        <Text style={styles.viewLabel}>{donations.length} result{donations.length !== 1 ? 's' : ''}</Text>
-        <View style={styles.viewToggle}>
-          <TouchableOpacity
-            activeOpacity={0.88}
-            style={[styles.viewButton, viewMode === 'list' ? styles.viewButtonActive : null]}
-            onPress={() => setViewMode('list')}>
-            <Text style={[styles.viewButtonText, viewMode === 'list' ? styles.viewButtonTextActive : null]}>
-              ☰ List
+        {selectMode ? (
+          <>
+            <TouchableOpacity activeOpacity={0.88} style={styles.selectCancelBtn} onPress={exitSelectMode}>
+              <Text style={styles.selectCancelText}>✕ Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.viewLabel}>
+              {selectedCount > 0 ? `${selectedCount} selected` : 'Tap to select'}
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            activeOpacity={0.88}
-            style={[styles.viewButton, viewMode === 'grid' ? styles.viewButtonActive : null]}
-            onPress={() => setViewMode('grid')}>
-            <Text style={[styles.viewButtonText, viewMode === 'grid' ? styles.viewButtonTextActive : null]}>
-              ⊞ Grid
-            </Text>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.viewToggle}>
+              <TouchableOpacity
+                activeOpacity={0.88}
+                style={styles.selectAllBtn}
+                onPress={selectAll}>
+                <Text style={styles.selectAllText}>Select All</Text>
+              </TouchableOpacity>
+              {selectedCount > 0 && (
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  style={styles.bulkDeleteBtn}
+                  onPress={() => setBulkDeleteModal(true)}>
+                  <Text style={styles.bulkDeleteBtnText}>Delete ({selectedCount})</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.viewLabel}>{donations.length} result{donations.length !== 1 ? 's' : ''}</Text>
+            <View style={styles.viewToggle}>
+              <TouchableOpacity
+                activeOpacity={0.88}
+                style={styles.viewButton}
+                onPress={() => setSelectMode(true)}>
+                <Text style={styles.viewButtonText}>☑ Select</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.88}
+                style={[styles.viewButton, viewMode === 'list' ? styles.viewButtonActive : null]}
+                onPress={() => setViewMode('list')}>
+                <Text style={[styles.viewButtonText, viewMode === 'list' ? styles.viewButtonTextActive : null]}>
+                  ☰ List
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.88}
+                style={[styles.viewButton, viewMode === 'grid' ? styles.viewButtonActive : null]}
+                onPress={() => setViewMode('grid')}>
+                <Text style={[styles.viewButtonText, viewMode === 'grid' ? styles.viewButtonTextActive : null]}>
+                  ⊞ Grid
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </View>
     </View>
   );
@@ -404,25 +480,40 @@ export default function HistoryScreen({ navigation }: any) {
   const renderItem = ({ item, index }: any) => {
     const isGrid = viewMode === 'grid';
     const accent = typeAccents[item.donationType] || palette.primary;
+    const isOwner = String(item.createdBy?._id ?? item.createdBy) === user?.id;
+    const canEdit = isAdmin || isOwner;
+    const canDelete = isAdmin || isOwner;
+    const isItemSelected = !!selectedIds[item._id];
+
+    const navigateToReceipt = () =>
+      navigation.navigate('ReceiptPreview', {
+        donationId: item._id,
+        receiptUrl: item.receiptUrl,
+        receiptNumber: item.receiptNumber,
+        donorName: item.donorName,
+        mobileNumber: item.mobileNumber,
+        qrImageUrl: item.qrImageUrl,
+      });
+
+    const handleCardPress = () => {
+      if (selectMode) { toggleSelectItem(item._id); } else { navigateToReceipt(); }
+    };
 
     if (isGrid) {
       return (
         <TouchableOpacity
           activeOpacity={0.88}
-          style={styles.gridCard}
-          onPress={() =>
-            navigation.navigate('ReceiptPreview', {
-              donationId: item._id,
-              receiptUrl: item.receiptUrl,
-              receiptNumber: item.receiptNumber,
-              donorName: item.donorName,
-              mobileNumber: item.mobileNumber,
-              qrImageUrl: item.qrImageUrl,
-            })
-          }>
+          style={[styles.gridCard, isItemSelected ? styles.cardSelected : null]}
+          onPress={handleCardPress}>
           {/* Coloured top stripe */}
-          <View style={[styles.gridStripe, { backgroundColor: accent }]}>
-            <Text style={styles.gridIndex}>#{index + 1}</Text>
+          <View style={[styles.gridStripe, { backgroundColor: isItemSelected ? palette.primary : accent }]}>
+            {selectMode ? (
+              <View style={styles.checkBox}>
+                {isItemSelected && <Text style={styles.checkMark}>✓</Text>}
+              </View>
+            ) : (
+              <Text style={styles.gridIndex}>#{index + 1}</Text>
+            )}
             <Badge label={item.donationType} tone={typeTones[item.donationType] || 'default'} />
           </View>
           <View style={styles.gridBody}>
@@ -430,30 +521,41 @@ export default function HistoryScreen({ navigation }: any) {
             <Text style={styles.gridAmount}>{formatCurrency(item.amount)}</Text>
             <Text style={styles.gridMeta}>{item.receiptNumber}</Text>
             <Text style={styles.gridMeta}>{new Date(item.date).toLocaleDateString('en-GB')} · {item.mode}</Text>
-            <View style={styles.gridFooter}>
-              <Badge
-                label={item.whatsappSent ? 'Sent' : 'Pending'}
-                tone={item.whatsappSent ? 'success' : 'warning'}
-              />
-              {isAdmin ? (
+            {!selectMode && (canEdit || canDelete) ? (
+              <View style={styles.gridFooter}>
+                <Badge
+                  label={item.whatsappSent ? 'Sent' : 'Pending'}
+                  tone={item.whatsappSent ? 'success' : 'warning'}
+                />
                 <View style={styles.gridActions}>
-                  <TouchableOpacity
-                    activeOpacity={0.75}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    onPress={() => openEditModal(item)}
-                    style={styles.editBtn}>
-                    <Text style={styles.editBtnText}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    activeOpacity={0.75}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    onPress={() => openDeleteModal(item._id, item.donorName)}
-                    style={styles.deleteBtn}>
-                    <Text style={styles.deleteBtnText}>Del</Text>
-                  </TouchableOpacity>
+                  {canEdit && (
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      onPress={() => openEditModal(item)}
+                      style={styles.editBtn}>
+                      <Text style={styles.editBtnText}>Edit</Text>
+                    </TouchableOpacity>
+                  )}
+                  {canDelete && (
+                    <TouchableOpacity
+                      activeOpacity={0.75}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      onPress={() => openDeleteModal(item._id, item.donorName)}
+                      style={styles.deleteBtn}>
+                      <Text style={styles.deleteBtnText}>Del</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
-              ) : null}
-            </View>
+              </View>
+            ) : (
+              <View style={styles.gridFooter}>
+                <Badge
+                  label={item.whatsappSent ? 'Sent' : 'Pending'}
+                  tone={item.whatsappSent ? 'success' : 'warning'}
+                />
+              </View>
+            )}
           </View>
         </TouchableOpacity>
       );
@@ -463,19 +565,16 @@ export default function HistoryScreen({ navigation }: any) {
     return (
       <TouchableOpacity
         activeOpacity={0.88}
-        style={styles.listCard}
-        onPress={() =>
-          navigation.navigate('ReceiptPreview', {
-            donationId: item._id,
-            receiptUrl: item.receiptUrl,
-            receiptNumber: item.receiptNumber,
-            donorName: item.donorName,
-            mobileNumber: item.mobileNumber,
-            qrImageUrl: item.qrImageUrl,
-          })
-        }>
-        {/* Left accent bar */}
-        <View style={[styles.listAccentBar, { backgroundColor: accent }]} />
+        style={[styles.listCard, isItemSelected ? styles.cardSelected : null]}
+        onPress={handleCardPress}>
+        {/* Left accent bar / select indicator */}
+        <View style={[styles.listAccentBar, { backgroundColor: isItemSelected ? palette.primary : accent }]}>
+          {selectMode && (
+            <View style={styles.listCheckBox}>
+              {isItemSelected && <Text style={styles.listCheckMark}>✓</Text>}
+            </View>
+          )}
+        </View>
         <View style={styles.listBody}>
           <View style={styles.listTopRow}>
             <View style={styles.listLeft}>
@@ -501,26 +600,30 @@ export default function HistoryScreen({ navigation }: any) {
                 {new Date(item.date).toLocaleDateString('en-GB')} · {item.mode}
               </Text>
             </View>
-            {isAdmin ? (
+            {!selectMode && (canEdit || canDelete) ? (
               <View style={styles.listActions}>
-                <TouchableOpacity
-                  activeOpacity={0.75}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  onPress={() => openEditModal(item)}
-                  style={styles.editIconWrap}>
-                  <View style={styles.editIconInner}>
-                    <Text style={styles.editIconText}>✎</Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  activeOpacity={0.75}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  onPress={() => openDeleteModal(item._id, item.donorName)}
-                  style={styles.deleteIconWrap}>
-                  <View style={styles.deleteIconInner}>
-                    <Text style={styles.deleteIconText}>⌫</Text>
-                  </View>
-                </TouchableOpacity>
+                {canEdit && (
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={() => openEditModal(item)}
+                    style={styles.editIconWrap}>
+                    <View style={styles.editIconInner}>
+                      <Text style={styles.editIconText}>✎</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                {canDelete && (
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={() => openDeleteModal(item._id, item.donorName)}
+                    style={styles.deleteIconWrap}>
+                    <View style={styles.deleteIconInner}>
+                      <Text style={styles.deleteIconText}>⌫</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : null}
           </View>
@@ -610,6 +713,37 @@ export default function HistoryScreen({ navigation }: any) {
         </View>
       </Modal>
 
+      {/* ── Bulk Delete Modal ── */}
+      <Modal
+        visible={bulkDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setBulkDeleteModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Delete {selectedCount} Donation{selectedCount !== 1 ? 's' : ''}</Text>
+            <Text style={styles.modalText}>
+              This will permanently delete <Text style={styles.modalBold}>{selectedCount}</Text> selected donation record{selectedCount !== 1 ? 's' : ''}. This cannot be undone.
+            </Text>
+            <View style={styles.modalActions}>
+              <Button
+                label="Cancel"
+                variant="ghost"
+                onPress={() => setBulkDeleteModal(false)}
+                style={styles.modalBtn}
+              />
+              <Button
+                label="Delete"
+                variant="danger"
+                loading={bulkDeleteLoading}
+                onPress={handleBulkDelete}
+                style={styles.modalBtn}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Edit Donation Modal ── */}
       <Modal
         visible={editModal.visible}
@@ -650,6 +784,11 @@ export default function HistoryScreen({ navigation }: any) {
                   <Text style={styles.editPickerArrow}>›</Text>
                 </TouchableOpacity>
               </FieldGroup>
+              {editForm.mode === 'Cheque' && (
+                <FieldGroup label="Cheque Number">
+                  <InputField value={editForm.chequeNumber || ''} onChangeText={v => setEditValue('chequeNumber', v)} placeholder="Enter cheque number" />
+                </FieldGroup>
+              )}
               {editForm.donationType === 'Noori Box' && (
                 <FieldGroup label="Box Number">
                   <TouchableOpacity activeOpacity={0.88} style={styles.editPickerField} onPress={() => setActiveSelectModal('boxNumber')}>
@@ -1210,6 +1349,86 @@ function makeStyles(p: Palette, shadows: ShadowRecord) {
   },
   editBtn2: {
     minHeight: 44,
+  },
+  // ── Multi-select ──
+  cardSelected: {
+    borderColor: p.primary,
+    borderWidth: 2,
+  },
+  checkBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkMark: {
+    color: '#FFFFFF',
+    fontSize: fs(12),
+    fontWeight: '800',
+    lineHeight: 16,
+  },
+  listCheckBox: {
+    position: 'absolute',
+    top: '50%',
+    left: -9,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    backgroundColor: p.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -9,
+  },
+  listCheckMark: {
+    color: '#FFFFFF',
+    fontSize: fs(10),
+    fontWeight: '800',
+    lineHeight: 14,
+  },
+  selectCancelBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: p.border,
+    backgroundColor: p.surface,
+  },
+  selectCancelText: {
+    color: p.textMuted,
+    fontSize: fs(12),
+    fontWeight: '700',
+  },
+  selectAllBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: p.primary,
+    backgroundColor: p.primarySoft,
+  },
+  selectAllText: {
+    color: p.primaryDark,
+    fontSize: fs(12),
+    fontWeight: '700',
+  },
+  bulkDeleteBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: '#DC2626',
+    borderWidth: 1,
+    borderColor: '#B91C1C',
+  },
+  bulkDeleteBtnText: {
+    color: '#FFFFFF',
+    fontSize: fs(12),
+    fontWeight: '700',
   },
   });
 }

@@ -3,6 +3,8 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import {
   Badge,
   Button,
+  FieldGroup,
+  InputField,
   PageHeader,
   PageScroll,
   SectionHeading,
@@ -23,9 +25,18 @@ const THEME_OPTIONS: { mode: ThemeMode; label: string }[] = [
 ];
 
 export default function SettingsScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
   const { palette, shadows, mode, setMode } = useTheme();
   const [activeTab, setActiveTab] = useState<TabKey>('about');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editConfirm, setEditConfirm] = useState('');
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
 
   const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
 
@@ -34,6 +45,43 @@ export default function SettingsScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Logout', style: 'destructive', onPress: logout },
     ]);
+  };
+
+  const startEditing = () => {
+    const nameParts = (user?.name ?? '').split(' ');
+    setEditFirstName(nameParts[0] ?? '');
+    setEditLastName(nameParts.slice(1).join(' ') ?? '');
+    setEditEmail(user?.email ?? '');
+    setEditPassword('');
+    setEditConfirm('');
+    setShowNewPwd(false);
+    setShowConfirmPwd(false);
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editFirstName.trim()) return Alert.alert('Validation', 'First name is required');
+    if (!editLastName.trim()) return Alert.alert('Validation', 'Last name is required');
+    if (!editEmail.trim()) return Alert.alert('Validation', 'Email is required');
+    if (editPassword && editPassword.length < 6) return Alert.alert('Validation', 'Password must be at least 6 characters');
+    if (editPassword && editPassword !== editConfirm) return Alert.alert('Validation', 'Passwords do not match');
+
+    setSaveLoading(true);
+    try {
+      const data: any = { firstName: editFirstName.trim(), lastName: editLastName.trim(), email: editEmail.trim() };
+      if (editPassword) data.password = editPassword;
+      await updateProfile(data);
+      setIsEditing(false);
+      Alert.alert('Success', 'Profile updated successfully');
+    } catch (error: any) {
+      Alert.alert('Error', error?.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setSaveLoading(false);
+    }
   };
 
   const fullName = user?.name ?? 'User account';
@@ -114,15 +162,85 @@ export default function SettingsScreen() {
       ) : (
         <>
           <SurfaceCard style={styles.card}>
-            <SectionHeading title="Profile" caption="Current signed-in account" />
-            <Text style={styles.profileName}>{fullName}</Text>
-            <Text style={styles.profileEmail}>{user?.email}</Text>
-
-            <View style={styles.roleRow}>
-              {(user?.roles ?? ['user']).map((role: string) => (
-                <Badge key={role} label={role} tone="success" style={styles.roleBadge} />
-              ))}
+            <View style={styles.profileHeader}>
+              <View style={styles.profileHeaderText}>
+                <SectionHeading title="Profile" caption="Current signed-in account" />
+              </View>
+              {!isEditing && (
+                <TouchableOpacity activeOpacity={0.88} onPress={startEditing} style={styles.editProfileBtn}>
+                  <Text style={styles.editProfileBtnText}>Edit</Text>
+                </TouchableOpacity>
+              )}
             </View>
+
+            {isEditing ? (
+              <>
+                <FieldGroup label="First Name">
+                  <InputField value={editFirstName} onChangeText={setEditFirstName} placeholder="First name" />
+                </FieldGroup>
+                <FieldGroup label="Last Name">
+                  <InputField value={editLastName} onChangeText={setEditLastName} placeholder="Last name" />
+                </FieldGroup>
+                <FieldGroup label="Email">
+                  <InputField value={editEmail} onChangeText={setEditEmail} placeholder="email@example.com" keyboardType="email-address" autoCapitalize="none" />
+                </FieldGroup>
+                <FieldGroup label="New Password" hint="Leave blank to keep current password">
+                  <View style={styles.pwdRow}>
+                    <InputField
+                      value={editPassword}
+                      onChangeText={setEditPassword}
+                      placeholder="Min 6 characters"
+                      secureTextEntry={!showNewPwd}
+                      style={styles.pwdInput}
+                    />
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      style={styles.pwdToggle}
+                      onPress={() => setShowNewPwd(v => !v)}>
+                      <Text style={styles.pwdToggleText}>{showNewPwd ? 'Hide' : 'Show'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </FieldGroup>
+                {editPassword.length > 0 && (
+                  <FieldGroup label="Confirm Password">
+                    <View style={styles.pwdRow}>
+                      <InputField
+                        value={editConfirm}
+                        onChangeText={setEditConfirm}
+                        placeholder="Repeat new password"
+                        secureTextEntry={!showConfirmPwd}
+                        style={styles.pwdInput}
+                      />
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        style={styles.pwdToggle}
+                        onPress={() => setShowConfirmPwd(v => !v)}>
+                        <Text style={styles.pwdToggleText}>{showConfirmPwd ? 'Hide' : 'Show'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {editConfirm.length > 0 && (
+                      <Text style={editConfirm === editPassword ? styles.pwdMatchText : styles.pwdNoMatchText}>
+                        {editConfirm === editPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
+                      </Text>
+                    )}
+                  </FieldGroup>
+                )}
+                <View style={styles.editActions}>
+                  <Button label="Save Changes" loading={saveLoading} onPress={handleSaveProfile} style={styles.editActionBtn} />
+                  <Button label="Cancel" variant="ghost" onPress={cancelEditing} style={styles.editActionBtn} />
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.profileName}>{fullName}</Text>
+                <Text style={styles.profileEmail}>{user?.email}</Text>
+                <View style={styles.roleRow}>
+                  {(user?.roles ?? ['user']).map((role: string) => (
+                    <Badge key={role} label={role} tone="success" style={styles.roleBadge} />
+                  ))}
+                </View>
+              </>
+            )}
           </SurfaceCard>
 
           <SurfaceCard style={styles.card}>
@@ -230,11 +348,32 @@ function makeStyles(p: Palette, shadows: ShadowRecord) {
       gap: spacing.sm,
       marginTop: spacing.sm,
     },
+    profileHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+    },
+    profileHeaderText: {
+      flex: 1,
+      marginRight: spacing.sm,
+    },
+    editProfileBtn: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.pill,
+      backgroundColor: p.primarySoft,
+    },
+    editProfileBtnText: {
+      color: p.primaryDark,
+      fontSize: fs(12),
+      fontWeight: '700',
+    },
     profileName: {
       color: p.text,
       fontSize: fs(22),
       fontWeight: '700',
       letterSpacing: -0.6,
+      marginTop: spacing.sm,
     },
     profileEmail: {
       color: p.textMuted,
@@ -250,8 +389,48 @@ function makeStyles(p: Palette, shadows: ShadowRecord) {
     roleBadge: {
       marginRight: 0,
     },
+    editActions: {
+      marginTop: spacing.lg,
+      gap: spacing.sm,
+    },
+    editActionBtn: {
+      marginTop: 0,
+    },
     logoutButton: {
       marginTop: spacing.lg,
+    },
+    pwdRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    pwdInput: {
+      flex: 1,
+    },
+    pwdToggle: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.pill,
+      backgroundColor: p.surfaceMuted,
+      borderWidth: 1,
+      borderColor: p.border,
+    },
+    pwdToggleText: {
+      color: p.textMuted,
+      fontSize: fs(12),
+      fontWeight: '700',
+    },
+    pwdMatchText: {
+      color: p.primary,
+      fontSize: fs(12),
+      fontWeight: '600',
+      marginTop: spacing.xs,
+    },
+    pwdNoMatchText: {
+      color: '#DC2626',
+      fontSize: fs(12),
+      fontWeight: '600',
+      marginTop: spacing.xs,
     },
   });
 }

@@ -24,7 +24,7 @@ import {
 } from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
 import { useDonations } from '../../hooks/useDonations';
-import { uploadQrImage } from '../../services/api';
+import { uploadChequeImage, uploadQrImage } from '../../services/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { fs, type Palette, radius, spacing } from '../../theme/theme';
 
@@ -123,12 +123,15 @@ export default function DonationFormScreen({ navigation }: any) {
     boxNumber: '',
     amount: '',
     qrImageUrl: '',
+    chequeNumber: '',
+    chequeImageUrl: '',
   });
   const [date, setDate] = useState<Date>(today);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [qrUploading, setQrUploading] = useState(false);
+  const [chequeUploading, setChequeUploading] = useState(false);
 
   const setValue = (key: string, value: string) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -170,6 +173,23 @@ export default function DonationFormScreen({ navigation }: any) {
     }
   };
 
+  const pickChequeImage = async (source: 'camera' | 'gallery') => {
+    const fn = source === 'camera' ? launchCamera : launchImageLibrary;
+    const result = await fn({ mediaType: 'photo', quality: 0.8, includeBase64: false });
+    if (result.didCancel || result.errorCode) return;
+    const asset = result.assets?.[0];
+    if (!asset?.uri) return;
+    setChequeUploading(true);
+    try {
+      const url = await uploadChequeImage({ uri: asset.uri, type: asset.type, fileName: asset.fileName });
+      setValue('chequeImageUrl', url);
+    } catch {
+      Alert.alert('Upload failed', 'Could not upload cheque image. Please try again.');
+    } finally {
+      setChequeUploading(false);
+    }
+  };
+
   const validate = () => {
     if (!form.fills) return 'Filled-by field is required';
     if (!form.donorName.trim()) return 'Donor name is required';
@@ -178,6 +198,7 @@ export default function DonationFormScreen({ navigation }: any) {
     if (!form.donationType) return 'Please select donation type';
     if (!form.mode) return 'Please select payment mode';
     if (form.mode === 'QR' && !form.qrImageUrl) return 'Please upload or capture the QR payment screenshot';
+    if (form.mode === 'Cheque' && !form.chequeNumber.trim()) return 'Cheque number is required';
     if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0) return 'Valid amount is required';
     return null;
   };
@@ -193,6 +214,8 @@ export default function DonationFormScreen({ navigation }: any) {
       boxNumber: '',
       amount: '',
       qrImageUrl: '',
+      chequeNumber: '',
+      chequeImageUrl: '',
     });
     setDate(new Date());
   };
@@ -213,6 +236,8 @@ export default function DonationFormScreen({ navigation }: any) {
         amount: Number(form.amount),
         boxNumber: form.boxNumber ? Number(form.boxNumber) : undefined,
         qrImageUrl: form.qrImageUrl || undefined,
+        chequeNumber: form.chequeNumber || undefined,
+        chequeImageUrl: form.chequeImageUrl || undefined,
       };
       const { donation, receiptUrl, receiptNumber } = await submitDonation(payload);
 
@@ -376,6 +401,52 @@ export default function DonationFormScreen({ navigation }: any) {
           </FieldGroup>
         )}
 
+        {form.mode === 'Cheque' && (
+          <FieldGroup label="Cheque Number" hint="Required for cheque payments">
+            <InputField
+              value={form.chequeNumber}
+              onChangeText={value => setValue('chequeNumber', value)}
+              placeholder="Enter cheque number"
+              keyboardType="default"
+            />
+          </FieldGroup>
+        )}
+
+        {form.mode === 'Cheque' && (
+          <FieldGroup label="Cheque Image" hint="Optional — take a photo or upload from device">
+            {form.chequeImageUrl ? (
+              <View style={styles.qrPreviewWrap}>
+                <Image source={{ uri: form.chequeImageUrl }} style={styles.qrPreview} resizeMode="cover" />
+                <View style={styles.qrPreviewFooter}>
+                  <Badge label="Uploaded" tone="success" />
+                  <TouchableOpacity onPress={() => setValue('chequeImageUrl', '')}>
+                    <Text style={styles.qrRemoveText}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.qrButtonRow}>
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  style={[styles.qrBtn, chequeUploading ? styles.qrBtnDisabled : null]}
+                  disabled={chequeUploading}
+                  onPress={() => pickChequeImage('camera')}>
+                  <Text style={styles.qrBtnTitle}>Take Photo</Text>
+                  <Text style={styles.qrBtnText}>Use the camera</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  style={[styles.qrBtn, chequeUploading ? styles.qrBtnDisabled : null]}
+                  disabled={chequeUploading}
+                  onPress={() => pickChequeImage('gallery')}>
+                  <Text style={styles.qrBtnTitle}>{chequeUploading ? 'Uploading' : 'Upload Image'}</Text>
+                  <Text style={styles.qrBtnText}>Choose from device</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </FieldGroup>
+        )}
+
         {form.donationType === 'Noori Box' && (
           <PickerField
             label="Box Number"
@@ -426,8 +497,10 @@ export default function DonationFormScreen({ navigation }: any) {
         title="Select payment mode"
         onSelect={value => {
           setValue('mode', value);
-          if (value !== 'QR') {
-            setValue('qrImageUrl', '');
+          if (value !== 'QR') setValue('qrImageUrl', '');
+          if (value !== 'Cheque') {
+            setValue('chequeNumber', '');
+            setValue('chequeImageUrl', '');
           }
         }}
         onClose={() => setActiveModal(null)}

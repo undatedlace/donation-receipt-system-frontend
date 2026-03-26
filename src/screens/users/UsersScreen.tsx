@@ -29,11 +29,10 @@ import { fs, type Palette, radius, spacing } from '../../theme/theme';
 
 type ShadowRecord = ReturnType<typeof import('../../theme/theme').createShadows>;
 
-const ROLES = ['admin', 'user', 'internal-admin'];
-const ROLE_TONES: Record<string, 'danger' | 'primary' | 'info'> = {
+const ROLES = ['admin', 'user'];
+const ROLE_TONES: Record<string, 'danger' | 'primary'> = {
   admin: 'danger',
   user: 'primary',
-  'internal-admin': 'info',
 };
 
 interface UserItem {
@@ -287,9 +286,8 @@ export default function UsersScreen() {
     const initials = `${item.firstName?.[0] ?? ''}${item.lastName?.[0] ?? ''}`.toUpperCase() || '?';
     const primaryRole = item.roles?.[0] ?? 'user';
     const avatarColors: Record<string, { bg: string; text: string; ring: string }> = {
-      admin:           { bg: '#FEF2F2', text: '#DC2626', ring: '#FECACA' },
-      'internal-admin': { bg: '#EFF6FF', text: '#1D4ED8', ring: '#BFDBFE' },
-      user:            { bg: palette.primarySoft, text: palette.primaryDark, ring: palette.accentSoft },
+      admin: { bg: '#FEF2F2', text: '#DC2626', ring: '#FECACA' },
+      user:  { bg: palette.primarySoft, text: palette.primaryDark, ring: palette.accentSoft },
     };
     const colors = avatarColors[primaryRole] || avatarColors.user;
 

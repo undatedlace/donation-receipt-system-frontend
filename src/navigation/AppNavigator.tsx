@@ -133,7 +133,6 @@ function MainTabs() {
   const roles: string[] = Array.isArray(user?.roles) ? user.roles : ['user'];
 
   const isAdmin = roles.includes('admin');
-  const isInternalAdmin = roles.includes('internal-admin');
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -158,14 +157,10 @@ function MainTabs() {
         tabBarIcon: createTabBarIcon(route.name),
         tabBarLabel: TAB_LABELS[route.name] ?? route.name,
       })}>
-      {(isAdmin || isInternalAdmin) && (
-        <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      )}
-      {(isAdmin || isInternalAdmin) && (
-        <Tab.Screen name="Donate" component={DonationFormScreen} />
-      )}
+      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="Donate" component={DonationFormScreen} />
       <Tab.Screen name="History" component={HistoryScreen} />
-      <Tab.Screen name="Users" component={UsersScreen} />
+      {isAdmin && <Tab.Screen name="Users" component={UsersScreen} />}
       <Tab.Screen name="Settings" component={SettingsScreen} />
       <Tab.Screen
         name="Logout"
