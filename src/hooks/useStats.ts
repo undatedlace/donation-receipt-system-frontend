@@ -32,6 +32,13 @@ export interface MonthlyTrendItem {
   total: number;
 }
 
+export interface UserCollectionStat {
+  _id: string;
+  name: string;
+  count: number;
+  total: number;
+}
+
 export interface DashboardStats {
   totalDonations: number;
   totalAmount: number | any;
@@ -40,6 +47,7 @@ export interface DashboardStats {
   byMode: PaymentModeStat[];
   recentDonations: RecentDonation[];
   monthlyTrend: MonthlyTrendItem[];
+  byUser?: UserCollectionStat[];
 }
 
 export function useStats() {

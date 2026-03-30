@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { LineChart } from 'react-native-gifted-charts';
+import { BarChart, LineChart } from 'react-native-gifted-charts';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   Badge,
@@ -126,6 +126,78 @@ function TrendChart({
   );
 }
 
+function UserCollectionChart({
+  data,
+}: {
+  data: Array<{ _id: string; name: string; count: number; total: number }>;
+}) {
+  const { palette, shadows, isDark } = useTheme();
+  const styles = React.useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
+
+  if (!data || data.length === 0) {
+    return (
+      <Text style={styles.emptyText}>
+        User collection data will appear once donations are recorded.
+      </Text>
+    );
+  }
+
+  const maxValue = Math.max(...data.map(d => d.total), 1);
+  const barWidth = Math.min(52, Math.floor((CHART_WIDTH - 48) / data.length) - 10);
+
+  const barData = data.map((item, idx) => ({
+    value: item.total,
+    label: item.name.split(' ')[0],
+    frontColor: idx === 0 ? '#2B8A6B' : palette.primary,
+    topLabelComponent: () => (
+      <Text style={styles.barTopLabel}>
+        {item.total >= 1000 ? `${(item.total / 1000).toFixed(0)}k` : String(item.total)}
+      </Text>
+    ),
+  }));
+
+  return (
+    <View>
+      <View style={styles.chartContainer}>
+        <BarChart
+          data={barData}
+          width={CHART_WIDTH - 32}
+          height={180}
+          barWidth={barWidth}
+          barBorderTopLeftRadius={6}
+          barBorderTopRightRadius={6}
+          maxValue={Math.ceil((maxValue * 1.3) / 1000) * 1000 || 1000}
+          yAxisThickness={0}
+          xAxisThickness={1}
+          xAxisColor={palette.border}
+          yAxisTextStyle={styles.chartAxisText}
+          xAxisLabelTextStyle={styles.chartAxisText}
+          rulesColor={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(4,94,83,0.08)'}
+          rulesType="dashed"
+          noOfSections={4}
+          isAnimated
+          formatYLabel={v => {
+            const n = Number(v);
+            return n >= 1000 ? `${(n / 1000).toFixed(0)}k` : String(n);
+          }}
+        />
+      </View>
+
+      {/* Name + amount legend below bars */}
+      <View style={styles.userLegendWrap}>
+        {data.map((item, idx) => (
+          <View key={item._id} style={styles.userLegendRow}>
+            <View style={[styles.userLegendDot, { backgroundColor: idx === 0 ? '#2B8A6B' : palette.primary }]} />
+            <Text style={styles.userLegendName} numberOfLines={1}>{item.name}</Text>
+            <Text style={styles.userLegendAmount}>{formatCurrency(item.total)}</Text>
+            <Text style={styles.userLegendCount}>{item.count} donations</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function QuickTile({
   title,
   caption,
@@ -186,6 +258,7 @@ export default function DashboardScreen({ navigation }: any) {
 
   const recentDonation = stats?.recentDonations?.[0];
   const roles = Array.isArray(user?.roles) ? user.roles : [];
+  const isAdmin = roles.includes('admin');
   const roleLabel = roles.includes('admin')
     ? 'Admin'
     : roles.includes('internal-admin')
@@ -284,6 +357,16 @@ export default function DashboardScreen({ navigation }: any) {
         />
         <TrendChart data={stats?.monthlyTrend ?? []} />
       </SurfaceCard>
+
+      {isAdmin && (
+        <SurfaceCard style={styles.sectionCard}>
+          <SectionHeading
+            title="Collection by Team Member"
+            caption="Total amount collected per user across all donations."
+          />
+          <UserCollectionChart data={stats?.byUser ?? []} />
+        </SurfaceCard>
+      )}
 
       <SurfaceCard style={styles.sectionCard}>
         <SectionHeading
@@ -654,6 +737,40 @@ function makeStyles(p: Palette, shadows: ShadowRecord) {
   },
   bottomButton: {
     marginTop: spacing.lg,
+  },
+  userLegendWrap: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  userLegendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: p.border,
+  },
+  userLegendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  userLegendName: {
+    flex: 1,
+    color: p.text,
+    fontSize: fs(13),
+    fontWeight: '700',
+  },
+  userLegendAmount: {
+    color: p.primaryDark,
+    fontSize: fs(12),
+    fontWeight: '700',
+  },
+  userLegendCount: {
+    color: p.textMuted,
+    fontSize: fs(11),
+    minWidth: 72,
+    textAlign: 'right',
   },
   });
 }
