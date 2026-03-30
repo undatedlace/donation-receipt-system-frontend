@@ -8,6 +8,7 @@ export interface User {
   lastName: string;
   email: string;
   roles: string[];
+  plainPassword?: string;
   createdAt?: string;
 }
 

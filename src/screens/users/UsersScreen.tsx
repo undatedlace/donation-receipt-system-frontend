@@ -41,6 +41,7 @@ interface UserItem {
   lastName: string;
   email: string;
   roles: string[];
+  plainPassword?: string;
 }
 
 const emptyAdd = { firstName: '', lastName: '', email: '', password: '', roles: [] as string[], zone: '', branch: '' };
@@ -131,6 +132,7 @@ export default function UsersScreen() {
   const [pwdLoading, setPwdLoading] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+  const [visiblePwdId, setVisiblePwdId] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -290,6 +292,7 @@ export default function UsersScreen() {
       user:  { bg: palette.primarySoft, text: palette.primaryDark, ring: palette.accentSoft },
     };
     const colors = avatarColors[primaryRole] || avatarColors.user;
+    const isPwdVisible = visiblePwdId === item._id;
 
     return (
       <View style={styles.userCard}>
@@ -307,7 +310,7 @@ export default function UsersScreen() {
           </View>
           <Text style={styles.userEmail} numberOfLines={1}>{item.email}</Text>
 
-          {/* Roles + actions */}
+          {/* Roles */}
           <View style={styles.userFooter}>
             <View style={styles.badgesRow}>
               {(item.roles ?? []).map(role => (
@@ -315,6 +318,24 @@ export default function UsersScreen() {
               ))}
             </View>
           </View>
+
+          {/* Password reveal row — admin only */}
+          {canWrite && (
+            <View style={styles.pwdRevealRow}>
+              <Text style={styles.pwdRevealLabel}>Password:</Text>
+              <Text style={styles.pwdRevealValue}>
+                {isPwdVisible
+                  ? (item.plainPassword || '—')
+                  : '••••••••'}
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                onPress={() => setVisiblePwdId(isPwdVisible ? null : item._id)}>
+                <Text style={styles.pwdRevealToggle}>{isPwdVisible ? 'Hide' : 'Show'}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {canWrite ? (
             <View style={styles.actionsRow}>
@@ -658,6 +679,35 @@ function makeStyles(p: Palette, shadows: ShadowRecord) {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
+  },
+  pwdRevealRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: spacing.sm,
+    backgroundColor: p.surfaceMuted,
+    borderRadius: radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: p.border,
+  },
+  pwdRevealLabel: {
+    color: p.textMuted,
+    fontSize: fs(11),
+    fontWeight: '600',
+  },
+  pwdRevealValue: {
+    flex: 1,
+    color: p.text,
+    fontSize: fs(13),
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  pwdRevealToggle: {
+    color: p.primary,
+    fontSize: fs(12),
+    fontWeight: '700',
   },
   actionsRow: {
     flexDirection: 'row',
