@@ -325,7 +325,7 @@ export default function UsersScreen() {
               <Text style={styles.pwdRevealLabel}>Password:</Text>
               <Text style={[styles.pwdRevealValue, !item.plainPassword && isPwdVisible ? styles.pwdRevealNA : null]}>
                 {isPwdVisible
-                  ? (item.plainPassword || 'Login required to reveal')
+                  ? (item.plainPassword || 'Use Password button to set & reveal')
                   : '••••••••'}
               </Text>
               <TouchableOpacity

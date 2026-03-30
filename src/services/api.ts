@@ -59,6 +59,7 @@ export const updateUser = (id: string, data: any) => api.patch(`/users/${id}`, d
 export const deleteUser = (id: string) => api.delete(`/users/${id}`);
 
 // ─── Self profile edit (all authenticated users) ────────────────────────
+export const getMyProfile = () => api.get('/users/me');
 export const updateMe = (data: any) => api.patch('/users/me', data);
 // ─── QR Screenshot upload ──────────────────────────────────────────────────
 export const uploadChequeImage = async (asset: {

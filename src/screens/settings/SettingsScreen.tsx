@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import {
   Badge,
   Button,
@@ -11,6 +11,7 @@ import {
   SurfaceCard,
 } from '../../components/ui/primitives';
 import { useAuth } from '../../hooks/useAuth';
+import { getMyProfile } from '../../services/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { type ThemeMode } from '../../theme/ThemeContext';
 import { fs, type Palette, radius, spacing } from '../../theme/theme';
@@ -37,6 +38,10 @@ export default function SettingsScreen() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+  const [storedPwd, setStoredPwd] = useState<string | null>(null);
+  const [pwdFetched, setPwdFetched] = useState(false);
+  const [showStoredPwd, setShowStoredPwd] = useState(false);
+  const [fetchingPwd, setFetchingPwd] = useState(false);
 
   const styles = useMemo(() => makeStyles(palette, shadows), [palette, shadows]);
 
@@ -45,6 +50,28 @@ export default function SettingsScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Logout', style: 'destructive', onPress: logout },
     ]);
+  };
+
+  const toggleStoredPwd = async () => {
+    if (showStoredPwd) {
+      setShowStoredPwd(false);
+      return;
+    }
+    if (pwdFetched) {
+      setShowStoredPwd(true);
+      return;
+    }
+    setFetchingPwd(true);
+    try {
+      const { data } = await getMyProfile();
+      setStoredPwd(data?.plainPassword ?? null);
+      setPwdFetched(true);
+      setShowStoredPwd(true);
+    } catch {
+      Alert.alert('Error', 'Could not load password.');
+    } finally {
+      setFetchingPwd(false);
+    }
   };
 
   const startEditing = () => {
@@ -56,6 +83,7 @@ export default function SettingsScreen() {
     setEditConfirm('');
     setShowNewPwd(false);
     setShowConfirmPwd(false);
+    setShowStoredPwd(false);
     setIsEditing(true);
   };
 
@@ -76,6 +104,12 @@ export default function SettingsScreen() {
       if (editPassword) data.password = editPassword;
       await updateProfile(data);
       setIsEditing(false);
+      if (data.password) {
+        // Reset cached password so next reveal fetches the updated one
+        setStoredPwd(null);
+        setPwdFetched(false);
+        setShowStoredPwd(false);
+      }
       Alert.alert('Success', 'Profile updated successfully');
     } catch (error: any) {
       Alert.alert('Error', error?.response?.data?.message || 'Failed to update profile');
@@ -239,6 +273,30 @@ export default function SettingsScreen() {
                     <Badge key={role} label={role} tone="success" style={styles.roleBadge} />
                   ))}
                 </View>
+
+                {/* Password reveal — visible to all users for their own account */}
+                <View style={styles.pwdRevealRow}>
+                  <View style={styles.pwdRevealLeft}>
+                    <Text style={styles.pwdRevealLabel}>Password</Text>
+                    <Text style={[
+                      styles.pwdRevealValue,
+                      showStoredPwd && !storedPwd ? styles.pwdRevealNA : null,
+                    ]}>
+                      {showStoredPwd
+                        ? (storedPwd || 'Not stored — change password to reveal')
+                        : '••••••••'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={styles.pwdRevealBtn}
+                    onPress={toggleStoredPwd}
+                    disabled={fetchingPwd}>
+                    {fetchingPwd
+                      ? <ActivityIndicator size="small" color={palette.primary} />
+                      : <Text style={styles.pwdRevealBtnText}>{showStoredPwd ? 'Hide' : 'Show'}</Text>}
+                  </TouchableOpacity>
+                </View>
               </>
             )}
           </SurfaceCard>
@@ -388,6 +446,55 @@ function makeStyles(p: Palette, shadows: ShadowRecord) {
     },
     roleBadge: {
       marginRight: 0,
+    },
+    pwdRevealRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: spacing.lg,
+      backgroundColor: p.surfaceMuted,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: p.border,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      gap: spacing.sm,
+    },
+    pwdRevealLeft: {
+      flex: 1,
+    },
+    pwdRevealLabel: {
+      color: p.textMuted,
+      fontSize: fs(11),
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+      marginBottom: 4,
+    },
+    pwdRevealValue: {
+      color: p.text,
+      fontSize: fs(14),
+      fontWeight: '700',
+      letterSpacing: 1.5,
+    },
+    pwdRevealNA: {
+      color: p.textMuted,
+      fontStyle: 'italic',
+      fontWeight: '400',
+      letterSpacing: 0,
+      fontSize: fs(12),
+    },
+    pwdRevealBtn: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.pill,
+      backgroundColor: p.primarySoft,
+      minWidth: 52,
+      alignItems: 'center',
+    },
+    pwdRevealBtnText: {
+      color: p.primaryDark,
+      fontSize: fs(12),
+      fontWeight: '700',
     },
     editActions: {
       marginTop: spacing.lg,
