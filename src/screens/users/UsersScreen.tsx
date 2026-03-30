@@ -323,9 +323,9 @@ export default function UsersScreen() {
           {canWrite && (
             <View style={styles.pwdRevealRow}>
               <Text style={styles.pwdRevealLabel}>Password:</Text>
-              <Text style={styles.pwdRevealValue}>
+              <Text style={[styles.pwdRevealValue, !item.plainPassword && isPwdVisible ? styles.pwdRevealNA : null]}>
                 {isPwdVisible
-                  ? (item.plainPassword || '—')
+                  ? (item.plainPassword || 'Login required to reveal')
                   : '••••••••'}
               </Text>
               <TouchableOpacity
@@ -703,6 +703,13 @@ function makeStyles(p: Palette, shadows: ShadowRecord) {
     fontSize: fs(13),
     fontWeight: '600',
     letterSpacing: 1,
+  },
+  pwdRevealNA: {
+    color: p.textMuted,
+    fontStyle: 'italic',
+    fontWeight: '400',
+    letterSpacing: 0,
+    fontSize: fs(12),
   },
   pwdRevealToggle: {
     color: p.primary,
