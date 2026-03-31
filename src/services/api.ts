@@ -8,8 +8,12 @@ const api = axios.create({ baseURL: BASE_URL, timeout: 15000 }); // 15 s timeout
 
 // Attach JWT token to every request
 api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  } catch (e) {
+    console.warn('Failed to read token from storage:', e);
+  }
   return config;
 });
 

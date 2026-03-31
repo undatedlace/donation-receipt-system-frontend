@@ -22,37 +22,61 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     (async () => {
-      const savedToken = await AsyncStorage.getItem('token');
-      const savedUser = await AsyncStorage.getItem('user');
-      if (savedToken && savedUser) {
-        setToken(savedToken);
-        setUser(JSON.parse(savedUser));
+      try {
+        const savedToken = await AsyncStorage.getItem('token');
+        const savedUser = await AsyncStorage.getItem('user');
+        if (savedToken && savedUser) {
+          setToken(savedToken);
+          try {
+            setUser(JSON.parse(savedUser));
+          } catch {
+            // Corrupted user JSON — clear it and start fresh
+            await AsyncStorage.removeItem('token');
+            await AsyncStorage.removeItem('user');
+          }
+        }
+      } catch (e) {
+        // AsyncStorage unavailable — continue as logged-out
+        console.warn('Failed to restore auth session:', e);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     })();
   }, []);
 
   const login = async (email: string, password: string) => {
     const { data } = await apiLogin(email, password);
-    await AsyncStorage.setItem('token', data.token);
-    await AsyncStorage.setItem('user', JSON.stringify(data.user));
+    try {
+      await AsyncStorage.setItem('token', data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+    } catch (e) {
+      console.warn('Failed to persist auth session:', e);
+    }
     setToken(data.token);
     setUser(data.user);
   };
 
   const register = async (firstName: string, lastName: string, email: string, password: string) => {
     const { data } = await apiRegister(firstName, lastName, email, password);
-    await AsyncStorage.setItem('token', data.token);
-    await AsyncStorage.setItem('user', JSON.stringify(data.user));
+    try {
+      await AsyncStorage.setItem('token', data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+    } catch (e) {
+      console.warn('Failed to persist auth session:', e);
+    }
     setToken(data.token);
     setUser(data.user);
   };
 
   const logout = async () => {
-    await Promise.all([
-      AsyncStorage.removeItem('token'),
-      AsyncStorage.removeItem('user'),
-    ]);
+    try {
+      await Promise.all([
+        AsyncStorage.removeItem('token'),
+        AsyncStorage.removeItem('user'),
+      ]);
+    } catch (e) {
+      console.warn('Failed to clear auth session:', e);
+    }
     setToken(null);
     setUser(null);
   };
@@ -60,11 +84,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const updateProfile = async (data: { firstName?: string; lastName?: string; email?: string; password?: string }) => {
     const { data: updated } = await updateMe(data);
     const newUser: AuthUser = {
-      ...user!,
+      ...(user as AuthUser),
       name: `${updated.firstName} ${updated.lastName}`,
       email: updated.email,
     };
-    await AsyncStorage.setItem('user', JSON.stringify(newUser));
+    try {
+      await AsyncStorage.setItem('user', JSON.stringify(newUser));
+    } catch (e) {
+      console.warn('Failed to persist updated profile:', e);
+    }
     setUser(newUser);
   };
 

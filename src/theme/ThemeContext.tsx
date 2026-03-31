@@ -30,16 +30,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Load persisted preference on mount
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then(saved => {
-      if (saved === 'light' || saved === 'dark' || saved === 'system') {
-        setModeState(saved);
-      }
-    });
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then(saved => {
+        if (saved === 'light' || saved === 'dark' || saved === 'system') {
+          setModeState(saved);
+        }
+      })
+      .catch(e => console.warn('Failed to load theme preference:', e));
   }, []);
 
   const setMode = useCallback((next: ThemeMode) => {
     setModeState(next);
-    AsyncStorage.setItem(STORAGE_KEY, next);
+    AsyncStorage.setItem(STORAGE_KEY, next).catch(e =>
+      console.warn('Failed to save theme preference:', e),
+    );
   }, []);
 
   const isDark = useMemo(() => {
