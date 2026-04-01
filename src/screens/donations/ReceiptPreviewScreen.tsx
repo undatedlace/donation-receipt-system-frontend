@@ -77,12 +77,14 @@ export default function ReceiptPreviewScreen({ navigation, route }: any) {
     if (num.length === 10) num = `91${num}`;
 
     const message =
-      `Assalamualaikum ${donorName}! 🌙\n\n` +
-      `Jazakallah Khair for your generous *${donationType}* donation to *SDI Education Centre*.\n\n` +
-      `🧾 Receipt No: ${receiptNumber}\n` +
-      `💰 Amount: Rs.${Number(amount).toLocaleString('en-IN')}\n\n` +
-      `📎 View your receipt: ${receiptUrl}\n\n` +
-      `May Allah (SWT) accept your contribution. 🤲 Aameen`;
+      `Assalamu Alaikum wa Rahmatullahi wa Barakatuh 🌙\n\n` +
+      `Dear *${donorName}*,\n\n` +
+      `JazakAllah Khair for your generous *${donationType}* donation of *₹${Number(amount).toLocaleString('en-IN')}*.\n\n` +
+      `SDI Education Centre is grateful for your contribution. 🤲\n\n` +
+      `Your official receipt is attached below.\n\n` +
+      `May Allah accept your Sadaqah and bless you and your family abundantly.\n\n` +
+      `— SDI Education Centre\n\n` +
+      `📄 Receipt *${receiptNumber}*\n${receiptUrl}`;
 
     const url = `https://wa.me/${num}?text=${encodeURIComponent(message)}`;
     Linking.openURL(url);
