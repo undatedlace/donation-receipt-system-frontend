@@ -8,6 +8,7 @@ export interface User {
   lastName: string;
   email: string;
   roles: string[];
+  phone?: string;
   plainPassword?: string;
   createdAt?: string;
 }
@@ -18,6 +19,7 @@ export interface CreateUserPayload {
   email: string;
   password: string;
   roles: string[];
+  phone?: string;
   zone?: string;
   branch?: string;
 }
@@ -28,6 +30,7 @@ export interface UpdateUserPayload {
   email?: string;
   roles?: string[];
   password?: string;
+  phone?: string;
 }
 
 export function useUsers() {

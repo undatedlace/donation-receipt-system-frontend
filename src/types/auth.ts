@@ -3,6 +3,7 @@ export interface AuthUser {
   name: string;
   email: string;
   roles: string[];
+  phone?: string;
 }
 
 /** Shape returned by POST /auth/login and POST /auth/register */

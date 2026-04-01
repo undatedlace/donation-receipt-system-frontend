@@ -41,10 +41,11 @@ interface UserItem {
   lastName: string;
   email: string;
   roles: string[];
+  phone?: string;
   plainPassword?: string;
 }
 
-const emptyAdd = { firstName: '', lastName: '', email: '', password: '', roles: [] as string[], zone: '', branch: '' };
+const emptyAdd = { firstName: '', lastName: '', email: '', password: '', phone: '', roles: [] as string[], zone: '', branch: '' };
 
 function RoleSelector({
   selected,
@@ -122,6 +123,7 @@ export default function UsersScreen() {
   const [editTarget, setEditTarget] = useState<UserItem | null>(null);
   const [editFirst, setEditFirst] = useState('');
   const [editLast, setEditLast] = useState('');
+  const [editPhone, setEditPhone] = useState('');
   const [editRoles, setEditRoles] = useState<string[]>([]);
   const [editLoading, setEditLoading] = useState(false);
 
@@ -141,7 +143,7 @@ export default function UsersScreen() {
   );
 
   const handleAdd = async () => {
-    const { firstName, lastName, email, password, roles, zone, branch } = addForm;
+    const { firstName, lastName, email, password, phone, roles, zone, branch } = addForm;
 
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()) {
       return Alert.alert('Validation', 'All fields are required.');
@@ -154,7 +156,7 @@ export default function UsersScreen() {
     setAddLoading(true);
 
     try {
-      await addUser({ firstName, lastName, email, password, roles, zone, branch });
+      await addUser({ firstName, lastName, email, password, phone: phone.trim() || undefined, roles, zone, branch });
       setAddVisible(false);
       setAddForm({ ...emptyAdd });
     } catch (error: any) {
@@ -168,6 +170,7 @@ export default function UsersScreen() {
     setEditTarget(user);
     setEditFirst(user.firstName);
     setEditLast(user.lastName);
+    setEditPhone(user.phone ?? '');
     setEditRoles([...(user.roles ?? [])]);
     setEditVisible(true);
   };
@@ -187,6 +190,7 @@ export default function UsersScreen() {
       await editUser(editTarget._id, {
         firstName: editFirst.trim(),
         lastName: editLast.trim(),
+        phone: editPhone.trim() || undefined,
         roles: editRoles,
       });
       setEditVisible(false);
@@ -309,6 +313,7 @@ export default function UsersScreen() {
             <Text style={styles.userName}>{item.firstName} {item.lastName}</Text>
           </View>
           <Text style={styles.userEmail} numberOfLines={1}>{item.email}</Text>
+          {item.phone ? <Text style={styles.userEmail} numberOfLines={1}>{item.phone}</Text> : null}
 
           {/* Roles */}
           <View style={styles.userFooter}>
@@ -442,6 +447,15 @@ export default function UsersScreen() {
           />
         </FieldGroup>
 
+        <FieldGroup label="Phone (WhatsApp)">
+          <InputField
+            value={addForm.phone}
+            onChangeText={value => setAddForm(form => ({ ...form, phone: value }))}
+            placeholder="e.g. 9876543210"
+            keyboardType="phone-pad"
+          />
+        </FieldGroup>
+
         <FieldGroup label="Zone">
           <InputField
             value={addForm.zone}
@@ -481,6 +495,15 @@ export default function UsersScreen() {
 
         <FieldGroup label="Last Name">
           <InputField value={editLast} onChangeText={setEditLast} placeholder="Last name" />
+        </FieldGroup>
+
+        <FieldGroup label="Phone (WhatsApp)">
+          <InputField
+            value={editPhone}
+            onChangeText={setEditPhone}
+            placeholder="e.g. 9876543210"
+            keyboardType="phone-pad"
+          />
         </FieldGroup>
 
         <FieldGroup label="Roles">

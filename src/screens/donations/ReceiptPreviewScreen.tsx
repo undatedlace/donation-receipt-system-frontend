@@ -19,7 +19,6 @@ import {
   SurfaceCard,
 } from '../../components/ui/primitives';
 import { generateReceipt, getDonation } from '../../services/api';
-import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../theme/ThemeContext';
 import { fs, type Palette, spacing } from '../../theme/theme';
@@ -32,9 +31,7 @@ export default function ReceiptPreviewScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(palette), [palette]);
   const { donationId, receiptUrl: paramReceiptUrl, receiptNumber: paramReceiptNumber, donorName: paramDonorName, mobileNumber: paramMobileNumber, qrImageUrl: paramQrImageUrl } = route.params || {};
-  const { sending, send } = useWhatsApp();
   const { user } = useAuth();
-  const canSendWhatsApp = !!user;
 
   const [sent, setSent] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -50,6 +47,8 @@ export default function ReceiptPreviewScreen({ navigation, route }: any) {
   const [mobileNumber, setMobileNumber] = useState<string | undefined>(paramMobileNumber);
   const [donationType, setDonationType] = useState<string | undefined>(undefined);
   const [amount, setAmount] = useState<number | undefined>(undefined);
+
+  const canSendWhatsApp = !!user && !!mobileNumber;
 
   // Always fetch the full donation to get latest receiptUrl + qrImageUrl
   useEffect(() => {
@@ -72,26 +71,22 @@ export default function ReceiptPreviewScreen({ navigation, route }: any) {
     })();
   }, [donationId]);
 
-  const handleSendWhatsApp = async () => {
-    const result = await send(donationId);
-    if (result.success) {
-      setSent(true);
-      Alert.alert('Receipt sent', `Receipt sent to ${mobileNumber} via WhatsApp.`);
-      return;
-    }
-    Alert.alert('Send via WhatsApp', result.error || 'Could not send automatically. Open WhatsApp manually?', [
-      {
-        text: 'Open WhatsApp',
-        onPress: () => {
-          const number = mobileNumber?.replace(/\D/g, '');
-          const text = encodeURIComponent(
-            `Assalamu Alaikum ${donorName},\n\nPlease find your donation receipt:\n${receiptUrl}`,
-          );
-          Linking.openURL(`whatsapp://send?phone=${number}&text=${text}`);
-        },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+  const handleSendWhatsApp = () => {
+    // Normalise to international format: 91XXXXXXXXXX
+    let num = (mobileNumber ?? '').replace(/\D/g, '').replace(/^0/, '');
+    if (num.length === 10) num = `91${num}`;
+
+    const message =
+      `Assalamualaikum ${donorName}! 🌙\n\n` +
+      `Jazakallah Khair for your generous *${donationType}* donation to *SDI Education Centre*.\n\n` +
+      `🧾 Receipt No: ${receiptNumber}\n` +
+      `💰 Amount: Rs.${Number(amount).toLocaleString('en-IN')}\n\n` +
+      `📎 View your receipt: ${receiptUrl}\n\n` +
+      `May Allah (SWT) accept your contribution. 🤲 Aameen`;
+
+    const url = `https://wa.me/${num}?text=${encodeURIComponent(message)}`;
+    Linking.openURL(url);
+    setSent(true);
   };
 
   const handleShare = async () => {
@@ -225,10 +220,8 @@ export default function ReceiptPreviewScreen({ navigation, route }: any) {
           <SurfaceCard style={styles.actionsCard}>
             {canSendWhatsApp ? (
               <Button
-                label={sent ? 'Sent to WhatsApp ✓' : 'Send to WhatsApp'}
+                label={sent ? 'Opened in WhatsApp ✓' : 'Send via WhatsApp'}
                 variant={sent ? 'success' : 'primary'}
-                loading={sending}
-                disabled={sent}
                 onPress={handleSendWhatsApp}
               />
             ) : null}
