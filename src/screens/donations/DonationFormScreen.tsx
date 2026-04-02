@@ -113,6 +113,9 @@ export default function DonationFormScreen({ navigation }: any) {
   const { submitDonation } = useDonations();
   const today = new Date();
 
+  // Determine role — admins can edit the "Recorded By" field
+  const isAdmin = Array.isArray(user?.roles) && user.roles.includes('admin');
+
   const [form, setForm] = useState({
     fills: user?.name || '',
     donorName: '',
@@ -125,6 +128,7 @@ export default function DonationFormScreen({ navigation }: any) {
     qrImageUrl: '',
     chequeNumber: '',
     chequeImageUrl: '',
+    bankTransferImageUrl: '',
   });
   const [date, setDate] = useState<Date>(today);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -132,6 +136,10 @@ export default function DonationFormScreen({ navigation }: any) {
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [qrUploading, setQrUploading] = useState(false);
   const [chequeUploading, setChequeUploading] = useState(false);
+  const [bankUploading, setBankUploading] = useState(false);
+
+  // Controls whether the admin is in edit mode for "Recorded By"
+  const [fillsEditing, setFillsEditing] = useState(false);
 
   const setValue = (key: string, value: string) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -146,25 +154,12 @@ export default function DonationFormScreen({ navigation }: any) {
   const pickQrImage = async (source: 'camera' | 'gallery') => {
     const fn = source === 'camera' ? launchCamera : launchImageLibrary;
     const result = await fn({ mediaType: 'photo', quality: 0.8, includeBase64: false });
-
-    if (result.didCancel || result.errorCode) {
-      return;
-    }
-
+    if (result.didCancel || result.errorCode) return;
     const asset = result.assets?.[0];
-
-    if (!asset?.uri) {
-      return;
-    }
-
+    if (!asset?.uri) return;
     setQrUploading(true);
-
     try {
-      const url = await uploadQrImage({
-        uri: asset.uri,
-        type: asset.type,
-        fileName: asset.fileName,
-      });
+      const url = await uploadQrImage({ uri: asset.uri, type: asset.type, fileName: asset.fileName });
       setValue('qrImageUrl', url);
     } catch {
       Alert.alert('Upload failed', 'Could not upload QR screenshot. Please try again.');
@@ -190,10 +185,30 @@ export default function DonationFormScreen({ navigation }: any) {
     }
   };
 
+  const pickBankTransferImage = async (source: 'camera' | 'gallery') => {
+    const fn = source === 'camera' ? launchCamera : launchImageLibrary;
+    const result = await fn({ mediaType: 'photo', quality: 0.8, includeBase64: false });
+    if (result.didCancel || result.errorCode) return;
+    const asset = result.assets?.[0];
+    if (!asset?.uri) return;
+    setBankUploading(true);
+    try {
+      // Reuse the cheque upload endpoint for bank transfer receipts
+      const url = await uploadChequeImage({ uri: asset.uri, type: asset.type, fileName: asset.fileName });
+      setValue('bankTransferImageUrl', url);
+    } catch {
+      Alert.alert('Upload failed', 'Could not upload bank transfer image. Please try again.');
+    } finally {
+      setBankUploading(false);
+    }
+  };
+
   const validate = () => {
     if (!form.fills) return 'Filled-by field is required';
     if (!form.donorName.trim()) return 'Donor name is required';
     if (!form.mobileNumber.trim()) return 'Mobile number is required';
+    const mobileDigits = form.mobileNumber.replace(/\D/g, '');
+    if (mobileDigits.length !== 10) return 'Mobile number must be exactly 10 digits';
     if (!form.address.trim()) return 'Address is required';
     if (!form.donationType) return 'Please select donation type';
     if (!form.mode) return 'Please select payment mode';
@@ -216,19 +231,17 @@ export default function DonationFormScreen({ navigation }: any) {
       qrImageUrl: '',
       chequeNumber: '',
       chequeImageUrl: '',
+      bankTransferImageUrl: '',
     });
     setDate(new Date());
+    setFillsEditing(false);
   };
 
   const handleSubmit = async () => {
     const err = validate();
-
-    if (err) {
-      return Alert.alert('Validation Error', err);
-    }
+    if (err) return Alert.alert('Validation Error', err);
 
     setLoading(true);
-
     try {
       const payload: any = {
         ...form,
@@ -238,6 +251,7 @@ export default function DonationFormScreen({ navigation }: any) {
         qrImageUrl: form.qrImageUrl || undefined,
         chequeNumber: form.chequeNumber || undefined,
         chequeImageUrl: form.chequeImageUrl || undefined,
+        bankTransferImageUrl: form.bankTransferImageUrl || undefined,
       };
       const { donation, receiptUrl, receiptNumber } = await submitDonation(payload);
 
@@ -296,8 +310,35 @@ export default function DonationFormScreen({ navigation }: any) {
           caption="Basic information used for the record and WhatsApp receipt delivery."
         />
 
+        {/* ── Recorded By ── role-aware field ── */}
         <FieldGroup label="Recorded By">
-          <InputField value={form.fills} onChangeText={value => setValue('fills', value)} placeholder="Your name" />
+          {isAdmin ? (
+            // Admin: show value + pencil icon; tap icon to edit inline
+            fillsEditing ? (
+              <InputField
+                value={form.fills}
+                onChangeText={value => setValue('fills', value)}
+                placeholder="Your name"
+                autoFocus
+                onBlur={() => setFillsEditing(false)}
+              />
+            ) : (
+              <View style={styles.recordedByRow}>
+                <Text style={styles.recordedByText}>{form.fills || '—'}</Text>
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  style={styles.editIconBtn}
+                  onPress={() => setFillsEditing(true)}>
+                  <Text style={styles.editIcon}>✎</Text>
+                </TouchableOpacity>
+              </View>
+            )
+          ) : (
+            // Regular user: read-only display
+            <View style={styles.recordedByReadonly}>
+              <Text style={styles.recordedByText}>{form.fills || '—'}</Text>
+            </View>
+          )}
         </FieldGroup>
 
         <FieldGroup label="Date">
@@ -323,12 +364,17 @@ export default function DonationFormScreen({ navigation }: any) {
           <InputField value={form.donorName} onChangeText={value => setValue('donorName', value)} placeholder="Full name" />
         </FieldGroup>
 
-        <FieldGroup label="Mobile Number">
+        <FieldGroup label="Mobile Number" hint="Must be exactly 10 digits">
           <InputField
             value={form.mobileNumber}
-            onChangeText={value => setValue('mobileNumber', value)}
-            placeholder="+91 XXXXX XXXXX"
+            onChangeText={value => {
+              // Only allow digits and strip to 10 max
+              const digits = value.replace(/\D/g, '').slice(0, 10);
+              setValue('mobileNumber', digits);
+            }}
+            placeholder="10-digit mobile number"
             keyboardType="phone-pad"
+            maxLength={10}
           />
         </FieldGroup>
 
@@ -341,7 +387,6 @@ export default function DonationFormScreen({ navigation }: any) {
             numberOfLines={4}
           />
         </FieldGroup>
-
 
       </SurfaceCard>
 
@@ -365,8 +410,9 @@ export default function DonationFormScreen({ navigation }: any) {
           onPress={() => setActiveModal('mode')}
         />
 
+        {/* ── QR: screenshot upload ── */}
         {form.mode === 'QR' && (
-          <FieldGroup label="QR Payment Screenshot" hint="Required for QR mode">
+          <FieldGroup label="QR Payment Screenshot" hint="Required — take a photo or upload from device">
             {form.qrImageUrl ? (
               <View style={styles.qrPreviewWrap}>
                 <Image source={{ uri: form.qrImageUrl }} style={styles.qrPreview} resizeMode="cover" />
@@ -384,16 +430,15 @@ export default function DonationFormScreen({ navigation }: any) {
                   style={[styles.qrBtn, qrUploading ? styles.qrBtnDisabled : null]}
                   disabled={qrUploading}
                   onPress={() => pickQrImage('camera')}>
-                  <Text style={styles.qrBtnTitle}>Take Photo</Text>
+                  <Text style={styles.qrBtnTitle}>📷  Take Photo</Text>
                   <Text style={styles.qrBtnText}>Use the camera</Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity
                   activeOpacity={0.88}
                   style={[styles.qrBtn, qrUploading ? styles.qrBtnDisabled : null]}
                   disabled={qrUploading}
                   onPress={() => pickQrImage('gallery')}>
-                  <Text style={styles.qrBtnTitle}>{qrUploading ? 'Uploading' : 'Upload Image'}</Text>
+                  <Text style={styles.qrBtnTitle}>{qrUploading ? '⏳  Uploading…' : '🖼  Upload Image'}</Text>
                   <Text style={styles.qrBtnText}>Choose from device</Text>
                 </TouchableOpacity>
               </View>
@@ -401,25 +446,62 @@ export default function DonationFormScreen({ navigation }: any) {
           </FieldGroup>
         )}
 
+        {/* ── Cheque: number + image ── */}
         {form.mode === 'Cheque' && (
-          <FieldGroup label="Cheque Number" hint="Required for cheque payments">
-            <InputField
-              value={form.chequeNumber}
-              onChangeText={value => setValue('chequeNumber', value)}
-              placeholder="Enter cheque number"
-              keyboardType="default"
-            />
-          </FieldGroup>
+          <>
+            <FieldGroup label="Cheque Number" hint="Required for cheque payments">
+              <InputField
+                value={form.chequeNumber}
+                onChangeText={value => setValue('chequeNumber', value)}
+                placeholder="Enter cheque number"
+                keyboardType="default"
+              />
+            </FieldGroup>
+
+            <FieldGroup label="Cheque Image" hint="Take a photo or upload from device">
+              {form.chequeImageUrl ? (
+                <View style={styles.qrPreviewWrap}>
+                  <Image source={{ uri: form.chequeImageUrl }} style={styles.qrPreview} resizeMode="cover" />
+                  <View style={styles.qrPreviewFooter}>
+                    <Badge label="Uploaded" tone="success" />
+                    <TouchableOpacity onPress={() => setValue('chequeImageUrl', '')}>
+                      <Text style={styles.qrRemoveText}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.qrButtonRow}>
+                  <TouchableOpacity
+                    activeOpacity={0.88}
+                    style={[styles.qrBtn, chequeUploading ? styles.qrBtnDisabled : null]}
+                    disabled={chequeUploading}
+                    onPress={() => pickChequeImage('camera')}>
+                    <Text style={styles.qrBtnTitle}>📷  Take Photo</Text>
+                    <Text style={styles.qrBtnText}>Use the camera</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.88}
+                    style={[styles.qrBtn, chequeUploading ? styles.qrBtnDisabled : null]}
+                    disabled={chequeUploading}
+                    onPress={() => pickChequeImage('gallery')}>
+                    <Text style={styles.qrBtnTitle}>{chequeUploading ? '⏳  Uploading…' : '🖼  Upload Image'}</Text>
+                    <Text style={styles.qrBtnText}>Choose from device</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </FieldGroup>
+          </>
         )}
 
-        {form.mode === 'Cheque' && (
-          <FieldGroup label="Cheque Image" hint="Optional — take a photo or upload from device">
-            {form.chequeImageUrl ? (
+        {/* ── Bank Transfer: payment receipt image ── */}
+        {form.mode === 'Bank Transfer' && (
+          <FieldGroup label="Transfer Receipt / Screenshot" hint="Take a photo or upload proof of transfer">
+            {form.bankTransferImageUrl ? (
               <View style={styles.qrPreviewWrap}>
-                <Image source={{ uri: form.chequeImageUrl }} style={styles.qrPreview} resizeMode="cover" />
+                <Image source={{ uri: form.bankTransferImageUrl }} style={styles.qrPreview} resizeMode="cover" />
                 <View style={styles.qrPreviewFooter}>
                   <Badge label="Uploaded" tone="success" />
-                  <TouchableOpacity onPress={() => setValue('chequeImageUrl', '')}>
+                  <TouchableOpacity onPress={() => setValue('bankTransferImageUrl', '')}>
                     <Text style={styles.qrRemoveText}>Remove</Text>
                   </TouchableOpacity>
                 </View>
@@ -428,18 +510,18 @@ export default function DonationFormScreen({ navigation }: any) {
               <View style={styles.qrButtonRow}>
                 <TouchableOpacity
                   activeOpacity={0.88}
-                  style={[styles.qrBtn, chequeUploading ? styles.qrBtnDisabled : null]}
-                  disabled={chequeUploading}
-                  onPress={() => pickChequeImage('camera')}>
-                  <Text style={styles.qrBtnTitle}>Take Photo</Text>
+                  style={[styles.qrBtn, bankUploading ? styles.qrBtnDisabled : null]}
+                  disabled={bankUploading}
+                  onPress={() => pickBankTransferImage('camera')}>
+                  <Text style={styles.qrBtnTitle}>📷  Take Photo</Text>
                   <Text style={styles.qrBtnText}>Use the camera</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   activeOpacity={0.88}
-                  style={[styles.qrBtn, chequeUploading ? styles.qrBtnDisabled : null]}
-                  disabled={chequeUploading}
-                  onPress={() => pickChequeImage('gallery')}>
-                  <Text style={styles.qrBtnTitle}>{chequeUploading ? 'Uploading' : 'Upload Image'}</Text>
+                  style={[styles.qrBtn, bankUploading ? styles.qrBtnDisabled : null]}
+                  disabled={bankUploading}
+                  onPress={() => pickBankTransferImage('gallery')}>
+                  <Text style={styles.qrBtnTitle}>{bankUploading ? '⏳  Uploading…' : '🖼  Upload Image'}</Text>
                   <Text style={styles.qrBtnText}>Choose from device</Text>
                 </TouchableOpacity>
               </View>
@@ -485,9 +567,7 @@ export default function DonationFormScreen({ navigation }: any) {
         title="Select donation type"
         onSelect={value => {
           setValue('donationType', value);
-          if (value !== 'Noori Box') {
-            setValue('boxNumber', '');
-          }
+          if (value !== 'Noori Box') setValue('boxNumber', '');
         }}
         onClose={() => setActiveModal(null)}
       />
@@ -502,6 +582,7 @@ export default function DonationFormScreen({ navigation }: any) {
             setValue('chequeNumber', '');
             setValue('chequeImageUrl', '');
           }
+          if (value !== 'Bank Transfer') setValue('bankTransferImageUrl', '');
         }}
         onClose={() => setActiveModal(null)}
       />
@@ -566,6 +647,48 @@ function makeStyles(p: Palette, shadows: ShadowRecord) {
   sectionCard: {
     marginTop: spacing.xl,
   },
+  // ── Recorded By ──
+  recordedByRow: {
+    minHeight: 48,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: p.borderStrong,
+    backgroundColor: p.surfaceMuted,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  recordedByReadonly: {
+    minHeight: 48,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: p.border,
+    backgroundColor: p.surfaceMuted,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    opacity: 0.75,
+  },
+  recordedByText: {
+    color: p.text,
+    fontSize: fs(14),
+    flex: 1,
+  },
+  editIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: p.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: spacing.sm,
+  },
+  editIcon: {
+    fontSize: fs(16),
+    color: p.primaryDark,
+    lineHeight: fs(20),
+  },
+  // ── Picker ──
   pickerField: {
     minHeight: 48,
     borderRadius: radius.md,
@@ -596,6 +719,7 @@ function makeStyles(p: Palette, shadows: ShadowRecord) {
     fontSize: fs(11),
     fontWeight: '700',
   },
+  // ── Image upload buttons ──
   qrButtonRow: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -645,6 +769,7 @@ function makeStyles(p: Palette, shadows: ShadowRecord) {
     fontSize: fs(13),
     fontWeight: '700',
   },
+  // ── Submit ──
   submitCard: {
     marginTop: spacing.xl,
     backgroundColor: p.primarySoft,
@@ -665,6 +790,7 @@ function makeStyles(p: Palette, shadows: ShadowRecord) {
   submitButton: {
     marginTop: spacing.lg,
   },
+  // ── Modals ──
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
